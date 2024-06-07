@@ -4,3 +4,11 @@
 .vscode/launch.json
 .vscode/ipch
 *.code-workspace
+*~
+*#
+.#*
+*.swp
+*.o
+
+sdkconfig
+build
