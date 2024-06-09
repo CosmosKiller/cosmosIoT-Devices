@@ -18,6 +18,11 @@
 
 <img src='https://i.imgur.com/NP5YZ5A.png'>
 
+* Also, make sure you have checked the options for formatting on paste, save and type. This will ensure your code will be correctly styled.
+> Press [Ctrl+,] (Linux/Win) or [Command+,] to open VS Code settings and then type *format* in the browse bar. Then check all three boxes, as shown below.
+
+<img src='https://i.imgur.com/gLY0Gpu.png'>
+
 ### Macros, Variables, Derived data types and Functions naming
 * As a general rule, when naming variables/functions we use `snake_case`, if the name consists of more than one word. E.g.:
 ```C
@@ -238,7 +243,7 @@ globalDir/
 |  |--lib/ ---> Libraries that are common to many projects.
 |	
 |--project1/
-|  |--include/ ---> Project tasks header files.
+|  |--tasks/ ---> Project tasks header files.
 |  |  |--my_library.h
 |  |
 |  |--libdeps/ ---> Third-party dependencies.
@@ -262,4 +267,4 @@ globalDir/
    |--platfomio.ini
 ```
 
-## Copyright © 2022 Marcel Nahir Samur
+## Copyright © 2024, Marcel Nahir Samur

@@ -10,5 +10,5 @@
 *.swp
 *.o
 
-sdkconfig
+sdkconfig.*
 build
