@@ -203,11 +203,11 @@ void cosmos_pump_control(char *pTopic, cosmos_pump_t *pPump, int engage, cosmos_
 * Now you are able to use the `pio` command. For more information, type `pio -h` 
 ### Working on a existent project
 * Navigate to the project's folder you want to work on and find the *src* folder inside of it
-* Open the *main.cpp* inside the *src* folder
+* Open the *main.c* inside the *src* folder
 * Start coding! :computer:
 * If you want to build/test/upload you code, type `pio run -e [theNameOfTheProjectYouAreWorkingOn]`. For more information, type `pio run -h`
 ### Creating a new project
-* First you'll need to create the project's folder where the *main.cpp* and the *platformio.ini* files will live
+* First you'll need to create the project's folder where the *main.c* and the *platformio.ini* files will live
 * Be sure to be as explicit and illustrative as possible when naming your project/folder ; e.g., 'automatedIrrigationSystem'
 * Once you've created the project directory, you'll need to create the *platformio.ini* file. This file, is used as project's configuration file that PlatformIO will use to build/upload/test your source code.
 * This file **must** include the following section (denoted by the `[header]` 'platformio')
@@ -219,17 +219,16 @@ libdeps_dir = ./libdeps
 include_dir = ./tasks
 ```
 * This header will make a 'global directory' (named '.commonFiles') where all you libdeps, custom libs and include files will be stored, so you use them in all of your projects without the need of downloading them over and over.
-* You can configure the rest of the sections according to what the project needs. Here's an example for a project based of a NodeMCU ESP8266 board, which includes a library for servo motors control.
+* You can configure the rest of the sections according to what the project needs. Here's an example for a project based of a ESP-WROOM-32E module, which includes a library for a BME680 sensor.
 ```ini
-[env:autonomusPetFeeder]
-platform  = espressif8266
-board  = nodemcuv2
-framework  = arduino
+[env:lilFlowerPal]
+platform = espressif32
+board = esp32doit-devkit-v1
+framework = espidf
 lib_ldf_mode = chain+
-build_flags = -D CIOT_ESP8266
-monitor_speed  = 115200
-lib_deps  =
-	khoih-prog/ESP8266_ISR_Servo@^1.3.0
+upload_speed = 250000
+build_flags =
+lib_deps =
 ```
 * Next step, is to create the *src* folder and the *main.c* file inside of it.
 * Finally is time to get your hands dirty and start coding! :keyboard:
