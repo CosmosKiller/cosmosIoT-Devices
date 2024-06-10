@@ -213,9 +213,7 @@ void cosmos_pump_control(char *pTopic, cosmos_pump_t *pPump, int engage, cosmos_
 * This file **must** include the following section (denoted by the `[header]` 'platformio')
 ```ini
 [platformio]
-build_dir = ../.commonFiles/.pio/builds/lib
 lib_dir = ../.commonFiles/lib
-libdeps_dir = ./libdeps
 include_dir = ./tasks
 ```
 * This header will make a 'global directory' (named '.commonFiles') where all you libdeps, custom libs and include files will be stored, so you use them in all of your projects without the need of downloading them over and over.
@@ -225,10 +223,12 @@ include_dir = ./tasks
 platform = espressif32
 board = esp32doit-devkit-v1
 framework = espidf
+build_flags =
+    -D CONFIG_I2CDEV_TIMEOUT=1000
+lib_extra_dirs = 
+    /home/cosmoskiller/.platformio/packages/framework-espidf/components/esp-idf-lib/components
 lib_ldf_mode = chain+
 upload_speed = 250000
-build_flags =
-lib_deps =
 ```
 * Next step, is to create the *src* folder and the *main.c* file inside of it.
 * Finally is time to get your hands dirty and start coding! :keyboard:
@@ -236,26 +236,26 @@ lib_deps =
 ```sequence
 globalDir/
 |--.commonFiles/
-|  |--.pio/
-|  |  |--build/
-|  |
 |  |--lib/ ---> Libraries that are common to many projects.
 |	
 |--project1/
-|  |--tasks/ ---> Project tasks header files.
-|  |  |--my_library.h
-|  |
-|  |--libdeps/ ---> Third-party dependencies.
+|  |--.pio/
+|  |  |--build/
 |  |  |
-|  |  |--project1/
-|  |     |
-|  |     |--custom_lib/
-|  |        |--custom_lib.h
-|  |        |--custom_lib.c
+|  |  |--libdeps/ ---> Third-party dependencies.
+|  |  |  |
+|  |  |  |--project1/
+|  |  |     |
+|  |  |     |--custom_lib/
+|  |  |        |--custom_lib.h
+|  |  |        |--custom_lib.c
 |  |
 |  |--src/ ---> Project's entry point and tasks source code.
 |  |  |--main.c
 |  |  |--my_library.c
+|  |
+|  |--tasks/ ---> Project tasks header files.
+|  |  |--my_library.h
 |  |
 |  |--platfomio.ini
 |

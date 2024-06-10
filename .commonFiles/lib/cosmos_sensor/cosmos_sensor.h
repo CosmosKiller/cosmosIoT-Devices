@@ -19,27 +19,24 @@ typedef enum {
 } cosmos_sensor_type_e;
 
 /**
- * @brief Use this struct within the
- * cosmos_pump_t to store the parameters
+ * @brief
+ *
+ */
+typedef union {
+    int i;   /*!< For percentual values */
+    float f; /*!< For non-percentual values */
+} cosmos_sensor_reading_u;
+
+/**
+ * @brief Use this struct
+ * to store the parameters
  * of the sensors
  */
 typedef struct {
-    const int thr_max;         /*!< Max threshold Level */
-    const int thr_min;         /*!< Min threshold Level */
-    const int *pin_num;        /*!< Pin number in which the sensor is connected */
-    cosmos_sensor_type_e type; /*!< Sensor type */
+    const int *pin_num;              /*!< Pin number in which the sensor is connected */
+    cosmos_sensor_reading_u reading; /*!< Min threshold Level */
+    cosmos_sensor_type_e type;       /*!< Sensor type */
 } cosmos_sensor_t;
-
-/**
- * @brief Struct in which the sensed data will be stored
- *
- */
-typedef struct {
-    int wl_data;
-    int sm_data;
-    float tm_data;
-    float hm_data;
-} cosmos_sensor_data_t;
 
 /**
  * @brief This function configures and characterize the ADC at
