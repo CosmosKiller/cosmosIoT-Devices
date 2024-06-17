@@ -9,7 +9,7 @@
 
 #define COSMOS_MAP(x, in_min, in_max, out_min, out_max) ((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min) /*!< Arduino style map function */
 
-#define QTY(devices) (sizeof(devices) / sizeof(*devices)) /*!< Quantity of devices */
+#define QTY(devices) (sizeof(devices) / sizeof(*(devices))) /*!< Quantity of devices */
 
 /**
  * @brief Standard structure for devices management
