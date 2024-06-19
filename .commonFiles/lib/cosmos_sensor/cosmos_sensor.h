@@ -3,8 +3,8 @@
 
 #include "esp_adc/adc_cali.h"
 
-#define NO_OF_SAMPLES 64   /*!< Standar sample rate for ADC multisampling */
-#define DEFAULT_VREF  1100 /*!< */
+#define NO_OF_SAMPLES 64   /*!< Standard sample rate for ADC multisampling */
+#define DEFAULT_VREF  1100 /*!< By design, the ADC reference voltage for ESP32 is 1100 mV */
 
 /**
  * @brief Types of sensor
@@ -38,7 +38,7 @@ typedef struct {
     adc_channel_t snr_chn;        /*!< ADC Channel associated to the sensor pin. Refere to [this link](https://lastminuteengineers.com/esp32-wroom-32-pinout-reference/#esp32wroom32-adc-pins) for a correct designation of pins and ADC channels */
     adc_cali_handle_t snr_handle; /*!< Sensor calibration handle */
     bool cali_flag;               /*!< Calibration flag. Set to false when first declaring the sensor */
-    int reading;                  /*!< Min threshold Level */
+    int reading;                  /*!< Sensor readings. Value interpretation depends of the sensor type */
 } cosmos_sensor_t;
 
 /**
@@ -49,7 +49,7 @@ typedef struct {
  *
  * @param pSensor Pointer to the struct which contains the sensor's
  * information
- * @param snr_qty Quantity of sensors used im the project
+ * @param snr_qty Quantity of sensors used in the project
  */
 void cosmos_sensor_adc_read_raw(cosmos_sensor_t *pSensor, int snr_qty);
 

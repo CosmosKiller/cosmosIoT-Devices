@@ -27,7 +27,7 @@ typedef struct {
  */
 typedef enum {
     DEVICE_TYPE_LSC = 0, /*!< Light Source */
-    DEVICE_TYPE_SKT,     /*!< Electrical outlet */
+    DEVICE_TYPE_PWR,     /*!< Power control device */
     DEVICE_TYPE_SNR,     /*!< Sensor */
     DEVICE_TYPE_CAM,     /*!< Camera */
     DEVICE_TYPE_MOT,     /*!< DC Motor */

@@ -10,10 +10,12 @@
  */
 
 #include "bme680_task.h"
+#include "pump_init.h"
 #include "soil_moisture_task.h"
 
 void app_main(void)
 {
-    // bme680_task_start();
+    bme680_task_start();
     soil_moisture_task_start();
+    pump_init_start();
 }

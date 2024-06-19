@@ -19,12 +19,11 @@ static bool s_pump_begin_handle = false;
  */
 static void cosmos_pump_begin(cosmos_pump_t *pPump)
 {
-    int pin_idx;
     // Bit mask is stored as an ull variable
     unsigned long long my_bit_mask;
 
     // Using bitwise OR we build the bit mask
-    for (pin_idx = 0; pin_idx < 3; pin_idx++) {
+    for (int pin_idx = 0; pin_idx < 3; pin_idx++) {
         if (pin_idx == 0) {
             /*
              * As the pump relay is connected to only one GPIO (on pin_idx=0),

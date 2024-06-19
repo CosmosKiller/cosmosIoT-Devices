@@ -16,21 +16,20 @@ static bool s_power_begin_handle = false;
  */
 static void cosmos_power_begin(cosmos_devices_t *pPower, size_t dev_qty)
 {
-    int dev_idx;
 
     // Configure the GPIO for each power device
-    for (dev_idx = 0; dev_idx < dev_qty; dev_idx++) {
-        if (strncmp("PWR", pPower[dev_idx].sn, 3) == 0) {
-            gpio_pad_select_gpio(pPower[dev_idx].pin[0]);
-            gpio_set_direction(pPower[dev_idx].pin[0], GPIO_MODE_OUTPUT);
-            gpio_intr_disable(pPower[dev_idx].pin[0]);
+    for (int dev_idx = 0; dev_idx < dev_qty; dev_idx++) {
+        // if (strncmp("PWR", pPower[dev_idx].sn, 3) == 0) {
+        gpio_pad_select_gpio(pPower[dev_idx].pin[0]);
+        gpio_set_direction(pPower[dev_idx].pin[0], GPIO_MODE_OUTPUT);
+        gpio_intr_disable(pPower[dev_idx].pin[0]);
 
-            /*
-             * Set the gpio pin level to the innital state
-             * defined in the devices struct of the main.c file
-             */
-            gpio_set_level(pPower[dev_idx].pin[0], pPower[dev_idx].state);
-        }
+        /*
+         * Set the gpio pin level to the innital state
+         * defined in the devices struct of the main.c file
+         */
+        gpio_set_level(pPower[dev_idx].pin[0], pPower[dev_idx].state);
+        // }
     }
 
     s_power_begin_handle = true;
@@ -42,10 +41,8 @@ void cosmos_power_control(const char *sn_value, cosmos_devices_t *pPower, size_t
     if (s_power_begin_handle == false)
         cosmos_power_begin(pPower, qty);
 
-    int pwr_idx;
-
     // Loop through the different power devices
-    for (pwr_idx = 0; pwr_idx < qty; pwr_idx++) {
+    for (int pwr_idx = 0; pwr_idx < qty; pwr_idx++) {
         /*
          * If the serial number matches
          * any of the stored in the
