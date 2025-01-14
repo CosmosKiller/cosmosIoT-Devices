@@ -1,6 +1,6 @@
 .pio
 .vscode
 *.code-workspace
+sdkconfig
 sdkconfig.*
 toDoList.md
-light
