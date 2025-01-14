@@ -11,8 +11,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 #include "cosmos_devices.h"
 #include "cosmos_power.h"
@@ -42,7 +42,7 @@ cosmos_devices_t pumps[] = {
 };
 
 /**
- * @brief Trigger moisture sensor readings
+ * @brief To-Do
  *
  * @param pvParameters Parameter which can be passed to the task.
  */

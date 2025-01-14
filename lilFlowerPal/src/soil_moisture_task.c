@@ -20,25 +20,25 @@
 
 cosmos_sensor_t soil_moisture_sensors[] = {
     {
-        .pin_num = 34,
+        .pin_num = GPIO_NUM_34,
         .snr_chn = ADC_CHANNEL_6,
         .type = SNR_TYPE_SM,
         .snr_handle = NULL,
     },
     {
-        .pin_num = 35,
+        .pin_num = GPIO_NUM_35,
         .snr_chn = ADC_CHANNEL_7,
         .type = SNR_TYPE_SM,
         .snr_handle = NULL,
     },
     {
-        .pin_num = 32,
+        .pin_num = GPIO_NUM_32,
         .snr_chn = ADC_CHANNEL_4,
         .type = SNR_TYPE_SM,
         .snr_handle = NULL,
     },
     {
-        .pin_num = 33,
+        .pin_num = GPIO_NUM_33,
         .snr_chn = ADC_CHANNEL_5,
         .type = SNR_TYPE_SM,
         .snr_handle = NULL,
