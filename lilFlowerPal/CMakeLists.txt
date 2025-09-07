@@ -1,6 +1,10 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.16)
 
-# This should be done before using the IDF_TARGET variable.
+# Make common/component folders visible to ESP-IDF so headers in .commonFiles are found
+set(EXTRA_COMPONENT_DIRS "../.commonFiles/lib/cosmos_devices"
+                         "../.commonFiles/lib/cosmos_power"
+                         "../.commonFiles/lib/cosmos_sensor"
+                         )
+
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-
 project(lilFlowerPal)

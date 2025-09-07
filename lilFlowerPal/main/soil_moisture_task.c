@@ -58,7 +58,15 @@ static void soil_moisture_task(void *pvParameters)
         cosmos_sensor_adc_read_raw(soil_moisture_sensors, snr_qty);
 
         for (int idx = 0; idx < snr_qty; idx++) {
-            current_reading = COSMOS_MAP(soil_moisture_sensors[idx].reading, 0, 3300, 0, 100);
+            current_reading = COSMOS_MAP(soil_moisture_sensors[idx].reading, 3000, 1500, 0, 100);
+
+            /*
+            As the soil gets wetter, the output value decreases, and as it gets drier,
+            the output value increases. When powered at 5V, the output ranges from
+            about 1.5V (for wet soil) to 3V (for dry soil).
+
+            Source: https://lastminuteengineers.com/capacitive-soil-moisture-sensor-arduino/
+            */
 
             printf("Moisture sensor %d: %ld\n", idx + 1, current_reading);
             vTaskDelay(pdMS_TO_TICKS(250));
