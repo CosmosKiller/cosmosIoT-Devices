@@ -20,7 +20,7 @@ static void cosmos_power_begin(cosmos_devices_t *pPower, size_t dev_qty)
     // Configure the GPIO for each power device
     for (int dev_idx = 0; dev_idx < dev_qty; dev_idx++) {
         // if (strncmp("PWR", pPower[dev_idx].sn, 3) == 0) {
-        gpio_pad_select_gpio(pPower[dev_idx].pin[0]);
+        // gpio_pad_select_gpio(pPower[dev_idx].pin[0]);
         gpio_set_direction(pPower[dev_idx].pin[0], GPIO_MODE_OUTPUT);
         gpio_intr_disable(pPower[dev_idx].pin[0]);
 

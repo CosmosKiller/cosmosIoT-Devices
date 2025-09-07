@@ -20,7 +20,7 @@ static void cosmos_devices_button_begin(int *pButton, size_t btn_qty, gpio_isr_t
 
     // Configure the GPIO for each button
     for (btn_idx = 0; btn_idx < btn_qty; btn_idx++) {
-        gpio_pad_select_gpio(pButton[btn_idx]);
+        // gpio_pad_select_gpio(pButton[btn_idx]);
         gpio_set_direction(pButton[btn_idx], GPIO_MODE_INPUT);
         gpio_set_pull_mode(pButton[btn_idx], GPIO_PULLUP_ONLY);
         gpio_intr_enable(pButton[btn_idx]);

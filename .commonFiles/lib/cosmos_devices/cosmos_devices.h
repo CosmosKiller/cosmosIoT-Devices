@@ -1,8 +1,7 @@
 #ifndef MAIN_COSMOS_DEVICES_H_
 #define MAIN_COSMOS_DEVICES_H_
 
-#include "driver/gpio.h"
-#include "rom/gpio.h"
+#include <driver/gpio.h>
 
 #define RX_CONTROL "/rx_control"
 #define RX_STATE   "/rx_state"
