@@ -1,7 +1,8 @@
 # Component CMake for lilFlowerPal 'src' component
 # Collect all C/C++ sources in this directory and export needed include dirs
 
-file(GLOB SRC_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.c")
-
-idf_component_register(SRCS ${SRC_FILES}
+idf_component_register(SRCS "main.cpp" "pump_task.cpp"
                        INCLUDE_DIRS "." "../tasks")
+
+set_property(TARGET ${COMPONENT_LIB} PROPERTY CXX_STANDARD 17)
+target_compile_options(${COMPONENT_LIB} PRIVATE "-DCHIP_HAVE_CONFIG_H")

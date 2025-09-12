@@ -19,6 +19,6 @@
 // Pump init task
 #define PUMP_INIT_TASK_STACK_SIZE 4096
 #define PUMP_INIT_TASK_PRIORITY   4
-#define PUMP_INIT_TASK_CORE_ID    0
+#define PUMP_INIT_TASK_CORE_ID    1
 
 #endif /* MAIN_TASKS_COMMON_H_ */
