@@ -19,7 +19,7 @@
 typedef void *pump_task_handle_t;
 
 typedef struct {
-    const int GPIO_PIN_VALUE;
+    const int GPIO_PIN_VALUE; /*<! GPIO pin associated with the pump */
 } gpio_pump_t;
 
 /**
@@ -27,27 +27,30 @@ typedef struct {
  *
  */
 typedef struct {
-    uint16_t endpoint_id; /* Endpoint ID associated with the pump */
-    int gpio;             /* GPIO pin associated with the pump */
+    uint16_t endpoint_id; /*!< Endpoint ID associated with the pump */
+    int gpio;             /*!< GPIO pin associated with the pump */
 } pump_task_config_t;
 
 /**
  *
  * @brief This initializes the pump driver
  *
+ * @param pPump Pointer to the GPIO configuration structure
+ *
  * @return ESP_OK on success
  */
-esp_err_t pump_task_init(const gpio_pump_t *pump);
+esp_err_t pump_task_init(const gpio_pump_t *pPump);
 
 /** Driver Update
  *
  * @brief This API should be called to update the driver for the attribute being updated.
- * This is usually called from the common `app_attribute_update_cb()`.
+ *        This is usually called from the common `app_attribute_update_cb()`.
  *
- * @param[in] endpoint_id Endpoint ID of the attribute.
- * @param[in] cluster_id Cluster ID of the attribute.
- * @param[in] attribute_id Attribute ID of the attribute.
- * @param[in] val Pointer to `esp_matter_attr_val_t`. Use appropriate elements as per the value type.
+ * @param driver_handle Handle to the driver instance. This is usually passed as `priv_data` while creating the endpoint.
+ * @param endpoint_id Endpoint ID of the attribute.
+ * @param cluster_id Cluster ID of the attribute.
+ * @param attribute_id Attribute ID of the attribute.
+ * @param val Pointer to `esp_matter_attr_val_t`. Use appropriate elements as per the value type.
  *
  * @return error in case of failure.
  */

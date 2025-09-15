@@ -1,5 +1,5 @@
 /**
- * @file pump_init.c
+ * @file pump_task.c
  * @author Marcel Nahir Samur (mnsamur2014@gmail.com)
  * @brief
  * @version 0.1
@@ -8,10 +8,6 @@
  * @copyright Copyright (c) 2024
  *
  */
-
-// Include standard libraries
-#include <stdio.h>
-#include <string.h>
 
 // Include ESP-IDF libraries
 #include <esp_log.h>
@@ -25,6 +21,8 @@
 using namespace chip::app::Clusters;
 using namespace esp_matter;
 
+static const char *TAG = "pump_task";
+
 extern pump_task_config_t pump_data[4];
 
 /**
@@ -37,7 +35,7 @@ extern pump_task_config_t pump_data[4];
 static esp_err_t pump_task_pump_set_on_off(esp_matter_attr_val_t *val, const int pump_gpio)
 {
     /* print val as text */
-    ESP_LOGI("pump_task", "Changing the pump state to %s!", val->val.b ? "ON" : "OFF");
+    ESP_LOGI(TAG, "Changing the pump state to %s!", val->val.b ? "ON" : "OFF");
     gpio_set_level((gpio_num_t)pump_gpio, val->val.b);
 
     return ESP_OK;
@@ -61,14 +59,14 @@ esp_err_t pump_task_attribute_update(pump_task_handle_t pump_handle, uint16_t en
     return err;
 }
 
-esp_err_t pump_task_init(const gpio_pump_t *pump)
+esp_err_t pump_task_init(const gpio_pump_t *pPump)
 {
-    ESP_LOGI("pump_task", "Initializing pump at GPIO %d", pump->GPIO_PIN_VALUE);
+    ESP_LOGI(TAG, "Initializing pump at GPIO %d", pPump->GPIO_PIN_VALUE);
 
-    esp_rom_gpio_pad_select_gpio((gpio_num_t)pump->GPIO_PIN_VALUE);
-    gpio_set_direction((gpio_num_t)pump->GPIO_PIN_VALUE, GPIO_MODE_OUTPUT);
-    gpio_intr_disable((gpio_num_t)pump->GPIO_PIN_VALUE);
-    gpio_set_level((gpio_num_t)pump->GPIO_PIN_VALUE, 0); // Ensure pump is off at start
+    esp_rom_gpio_pad_select_gpio((gpio_num_t)pPump->GPIO_PIN_VALUE);
+    gpio_set_direction((gpio_num_t)pPump->GPIO_PIN_VALUE, GPIO_MODE_OUTPUT);
+    gpio_intr_disable((gpio_num_t)pPump->GPIO_PIN_VALUE);
+    gpio_set_level((gpio_num_t)pPump->GPIO_PIN_VALUE, 0); // Ensure pump is off at start
 
     return ESP_OK;
 }

@@ -9,22 +9,27 @@
  *
  */
 
+// Include ESP-IDF libraries
 #include <esp_err.h>
 #include <esp_log.h>
 #include <nvs_flash.h>
 
+// Include ESP-MATTER libraries
 #include <esp_matter.h>
 #include <esp_matter_console.h>
 #include <esp_matter_ota.h>
 
-#include <main_tasks_common.h>
-#include <pump_task.h>
 #if CHIP_DEVICE_CONFIG_ENABLE_THREAD
 #include <platform/ESP32/OpenthreadLauncher.h>
 #endif
 
 #include <app/server/CommissioningWindowManager.h>
 #include <app/server/Server.h>
+
+// Include project libraries
+#include <bme680_task.h>
+#include <main_tasks_common.h>
+#include <pump_task.h>
 
 static const char *TAG = "app_main";
 
@@ -51,6 +56,87 @@ extern const char decryption_key_end[] asm("_binary_esp_image_encryption_key_pem
 static const char *s_decryption_key = decryption_key_start;
 static const uint16_t s_decryption_key_len = decryption_key_end - decryption_key_start;
 #endif // CONFIG_ENABLE_ENCRYPTED_OTA
+
+/*
+ * Application cluster specification, 2.3.4.1. Temperature
+ * represents a temperature on the Celsius scale with a resolution of 0.01°C.
+ * temp = (temperature in °C) x 100
+ */
+static void temp_sensor_notification(uint16_t endpoint_id, float temp, void *user_data)
+{
+    // schedule the attribute update so that we can report it from matter thread
+    chip::DeviceLayer::SystemLayer().ScheduleLambda([endpoint_id, temp]() {
+        attribute_t *attribute = attribute::get(endpoint_id,
+                                                TemperatureMeasurement::Id,
+                                                TemperatureMeasurement::Attributes::MeasuredValue::Id);
+
+        esp_matter_attr_val_t val = esp_matter_invalid(NULL);
+        attribute::get_val(attribute, &val);
+        val.val.i16 = static_cast<int16_t>(temp * 100);
+
+        attribute::update(endpoint_id, TemperatureMeasurement::Id, TemperatureMeasurement::Attributes::MeasuredValue::Id, &val);
+    });
+}
+
+/*
+ * Application cluster specification, 2.6.4.1. Relative Humidity
+ * represents the humidity in percent.
+ * humidity = (humidity in %) x 100
+ *
+ */
+static void humidity_sensor_notification(uint16_t endpoint_id, float humidity, void *user_data)
+{
+    // schedule the attribute update so that we can report it from matter thread
+    chip::DeviceLayer::SystemLayer().ScheduleLambda([endpoint_id, humidity]() {
+        attribute_t *attribute = attribute::get(endpoint_id,
+                                                RelativeHumidityMeasurement::Id,
+                                                RelativeHumidityMeasurement::Attributes::MeasuredValue::Id);
+
+        esp_matter_attr_val_t val = esp_matter_invalid(NULL);
+        attribute::get_val(attribute, &val);
+        val.val.u16 = static_cast<uint16_t>(humidity * 100);
+
+        attribute::update(endpoint_id, RelativeHumidityMeasurement::Id, RelativeHumidityMeasurement::Attributes::MeasuredValue::Id, &val);
+    });
+}
+
+/*
+ * Application cluster specification, 2.4.5.1. Pressure
+ * represents the pressure in Kilopascals (kPa).
+ * pressure = (pressure in kPa) x 10
+ *
+ */
+static void pressure_sensor_notification(uint16_t endpoint_id, float pressure, void *user_data)
+{
+    // schedule the attribute update so that we can report it from matter thread
+    chip::DeviceLayer::SystemLayer().ScheduleLambda([endpoint_id, pressure]() {
+        attribute_t *attribute = attribute::get(endpoint_id,
+                                                PressureMeasurement::Id,
+                                                PressureMeasurement::Attributes::MeasuredValue::Id);
+
+        esp_matter_attr_val_t val = esp_matter_invalid(NULL);
+        attribute::get_val(attribute, &val);
+        val.val.u32 = static_cast<uint32_t>(pressure);
+
+        attribute::update(endpoint_id, PressureMeasurement::Id, PressureMeasurement::Attributes::MeasuredValue::Id, &val);
+    });
+}
+
+/* static void gas_sensor_notification(uint16_t endpoint_id, float gas_resistance, void *user_data)
+{
+    // schedule the attribute update so that we can report it from matter thread
+    chip::DeviceLayer::SystemLayer().ScheduleLambda([endpoint_id, gas_resistance]() {
+        attribute_t *attribute = attribute::get(endpoint_id,
+                                                TotalVolatileOrganicCompoundsConcentrationMeasurement::Id,
+                                                TotalVolatileOrganicCompoundsConcentrationMeasurement::Attributes::MeasuredValue::Id);
+
+        esp_matter_attr_val_t val = esp_matter_invalid(NULL);
+        attribute::get_val(attribute, &val);
+        val.val.u32 = gas_resistance;
+
+        attribute::update(endpoint_id, 0x042E, 0x0000, &val);
+    });
+} */
 
 static void app_event_cb(const ChipDeviceEvent *event, intptr_t arg)
 {
@@ -150,28 +236,28 @@ static esp_err_t app_attribute_update_cb(attribute::callback_type_t type, uint16
 }
 
 // Creates pump-endpoint mapping for each GPIO pin configured.
-static esp_err_t app_create_pump(gpio_pump_t *pump, node_t *node)
+static esp_err_t app_create_pump(gpio_pump_t *pPump, node_t *pNode)
 {
     esp_err_t err = ESP_OK;
 
-    if (!node) {
+    if (!pNode) {
         ESP_LOGE(TAG, "Matter node cannot be NULL");
         return ESP_ERR_INVALID_ARG;
     }
 
-    if (!pump) {
+    if (!pPump) {
         ESP_LOGE(TAG, "Plug cannot be NULL");
         return ESP_ERR_INVALID_ARG;
     }
 
-    /* Create the pump endpoint */
+    // Create the pump endpoint
     on_off_plugin_unit::config_t pump_config;
     pump_config.on_off.on_off = DEFAULT_POWER;
-    endpoint_t *endpoint = on_off_plugin_unit::create(node, &pump_config, ENDPOINT_FLAG_NONE, pump);
+    endpoint_t *endpoint = on_off_plugin_unit::create(pNode, &pump_config, ENDPOINT_FLAG_NONE, pPump);
 
-    /* Confirm that node and endpoint were created successfully */
+    // Confirm that node and endpoint were created successfully
     if (!endpoint) {
-        ESP_LOGE(TAG, "Matter node creation failed");
+        ESP_LOGE(TAG, "Failed to create plug endpoint");
         return ESP_FAIL;
     }
 
@@ -181,7 +267,7 @@ static esp_err_t app_create_pump(gpio_pump_t *pump, node_t *node)
 
     // Check for maximum plugs that can be configured.
     if (configure_pumps < 4) {
-        pump_data[configure_pumps].gpio = pump->GPIO_PIN_VALUE;
+        pump_data[configure_pumps].gpio = pPump->GPIO_PIN_VALUE;
         pump_data[configure_pumps].endpoint_id = endpoint::get_id(endpoint);
         configure_pumps++;
     } else {
@@ -189,7 +275,7 @@ static esp_err_t app_create_pump(gpio_pump_t *pump, node_t *node)
         return ESP_FAIL;
     }
 
-    /* Get Endpoints Id */
+    // Get Endpoints Id
     uint16_t pump_endpoint_id = endpoint::get_id(endpoint);
     ESP_LOGI(TAG, "Pump %d created with endpoint_id %d", configure_pumps, pump_endpoint_id);
 
@@ -197,7 +283,7 @@ static esp_err_t app_create_pump(gpio_pump_t *pump, node_t *node)
 }
 
 // Task to initialize pump tasks for each configured pump.
-static void app_init_pump(void *arg)
+static void app_init_pump(void *pvParameters)
 {
     for (int i = 0; i < configure_pumps; ++i) {
         esp_err_t r = pump_task_init(&pump_gpios[i]);
@@ -212,8 +298,8 @@ static void app_init_pump(void *arg)
 // Start the pump initialization task
 static void app_start_pump(void)
 {
-    xTaskCreatePinnedToCore(app_init_pump, "app_init_pump", PUMP_INIT_TASK_STACK_SIZE, NULL,
-                            PUMP_INIT_TASK_PRIORITY, NULL, PUMP_INIT_TASK_CORE_ID);
+    xTaskCreatePinnedToCore(app_init_pump, "app_init_pump", PUMP_TASK_STACK_SIZE, NULL,
+                            PUMP_TASK_PRIORITY, NULL, PUMP_TASK_CORE_ID);
 }
 
 extern "C" void app_main()
@@ -233,14 +319,7 @@ extern "C" void app_main()
         return;
     }
 
-    // Init event loop and netif (Matter expects these)
-    /*         err = esp_event_loop_create_default();
-            if (err != ESP_OK && err != ESP_ERR_INVALID_STATE) {
-                ESP_LOGE(TAG, "esp_event_loop_create_default failed: %d", err);
-                return;
-            } */
-
-    // Create node (check result)
+    // Create a Matter node and add the mandatory Root Node device type on endpoint 0
     node::config_t node_cfg;
     node_t *node = node::create(&node_cfg, app_attribute_update_cb, app_identification_cb);
     if (!node) {
@@ -248,6 +327,59 @@ extern "C" void app_main()
         return;
     }
 
+    // Add temperature sensor device
+    temperature_sensor::config_t temp_sensor_config;
+    endpoint_t *temp_sensor_ep = temperature_sensor::create(node, &temp_sensor_config, ENDPOINT_FLAG_NONE, NULL);
+    // Confirm that temperature_sensor endpoint was created successfully
+    if (!temp_sensor_ep) {
+        ESP_LOGE(TAG, "Failed to create temperature_sensor endpoint");
+        return;
+    }
+
+    // Add the humidity sensor device
+    humidity_sensor::config_t humidity_sensor_config;
+    endpoint_t *humidity_sensor_ep = humidity_sensor::create(node, &humidity_sensor_config, ENDPOINT_FLAG_NONE, NULL);
+    // Confirm that humidity_sensor endpoint was created successfully
+    if (!temp_sensor_ep) {
+        ESP_LOGE(TAG, "Failed to create humidity_sensor endpoint");
+        return;
+    }
+
+    // Add the pressure sensor device
+    pressure_sensor::config_t pressure_sensor_config;
+    endpoint_t *pressure_sensor_ep = pressure_sensor::create(node, &pressure_sensor_config, ENDPOINT_FLAG_NONE, NULL);
+    // Confirm that pressure_sensor endpoint was created successfully
+    if (!pressure_sensor_ep) {
+        ESP_LOGE(TAG, "Failed to create pressure_sensor endpoint");
+        return;
+    }
+
+    // Initialize BME680 sensor task
+    static bme680_sensor_config_t bme680_sensor_config = {
+        .temperature =
+            {
+                .cb = temp_sensor_notification,
+                .endpoint_id = endpoint::get_id(temp_sensor_ep),
+            },
+        .humidity =
+            {
+                .cb = humidity_sensor_notification,
+                .endpoint_id = endpoint::get_id(humidity_sensor_ep),
+            },
+        .pressure =
+            {
+                .cb = pressure_sensor_notification,
+                .endpoint_id = endpoint::get_id(pressure_sensor_ep),
+            },
+    };
+
+    err = bme680_task_sensor_init(&bme680_sensor_config);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "bme680_task_sensor_init failed: %d", err);
+        return;
+    }
+
+    // Create pump endpoints for each configured GPIO pin
     app_create_pump(&pump_gpios[0], node);
     app_create_pump(&pump_gpios[1], node);
     app_create_pump(&pump_gpios[2], node);
@@ -271,6 +403,7 @@ extern "C" void app_main()
         return;
     }
 
+    // Start the pump tasks
     app_start_pump();
 
 #if CONFIG_ENABLE_ENCRYPTED_OTA

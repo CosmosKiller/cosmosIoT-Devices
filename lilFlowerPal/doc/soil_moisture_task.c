@@ -8,15 +8,20 @@
  * @copyright Copyright (c) 2024
  *
  */
-#include <stdio.h>
-#include <string.h>
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+// Include ESP-IDF libraries
+#include <esp_log.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
-#include "cosmos_devices.h"
-#include "cosmos_sensor.h"
-#include "main_tasks_common.h"
+// Include ESP-MATTER libraries
+#include <esp_matter.h>
+
+// Include project libraries
+#include <soil_moisture_task.h>
+
+using namespace chip::app::Clusters;
+using namespace esp_matter;
 
 cosmos_sensor_t soil_moisture_sensors[] = {
     {

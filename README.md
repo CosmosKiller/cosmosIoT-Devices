@@ -1,16 +1,19 @@
-# :zap: :bulb: CosmosIoT Devices :satellite: :electric_plug:
+# ⚡️ 💡 CosmosIoT Devices 📡 🔌
 
-> Here you'll find the code for all of the devices manufactured @CosmosIoT 
+> Here you'll find the code for all of the devices manufactured @CosmosIoT
 
 ## Before you start
-* It's crucial that before actually start working on any project, you know and apply the conventions regarding code writing style and formatting, to ensure your code is consistent with the codebase of the platform. 
+
+* It's crucial that before actually start working on any project, you know and apply the conventions regarding code writing style and formatting, to ensure your code is consistent with the codebase of the platform.
 
 ### C style formatting
+
 * Here, we apply the classic c-style formatting, following the guidelines proposed in the second edition of 'The C Programming Language' and the LLVM style. Which includes, break before braces only when defining functions, alignment of consecutive macros and an indent width of 4 spaces, among others parameters.
 * To guarantee that the formatting style, will be the same as the described before, yo can copy the following line in the **Clang_format_fallback Style** option from the C/C++ extension for VS Code:
- ```js
+
+```js
  { BasedOnStyle: LLVM, UseTab: Never, IndentWidth: 4, TabWidth: 4, BreakBeforeBraces: Linux, AllowShortIfStatementsOnASingleLine: false, IndentCaseLabels: false, ColumnLimit: 0, AccessModifierOffset: -4, NamespaceIndentation: All, FixNamespaceComments: false, AlignConsecutiveMacros: true }
- ```
+```
 
 > Press [Ctrl+,] (Linux/Win) or [Command+,] to open VS Code settings and then type *Clang_format_fallback Style* in the browse bar. Then paste the line described above.
 >
@@ -19,20 +22,27 @@
 <img src='https://i.imgur.com/NP5YZ5A.png'>
 
 * Also, make sure you have checked the options for formatting on paste, save and type. This will ensure your code will be correctly styled.
+
 > Press [Ctrl+,] (Linux/Win) or [Command+,] to open VS Code settings and then type *format* in the browse bar. Then check all three boxes, as shown below.
 
 <img src='https://i.imgur.com/gLY0Gpu.png'>
 
 ### Macros, Variables, Derived data types and Functions naming
+
 * As a general rule, when naming variables/functions we use `snake_case`, if the name consists of more than one word. E.g.:
+
 ```C
 int this_is_my_variable;
 ```
+
 * Only when declaring pointer variables we use `camelCase`. The name of the pointer must start with the letter `p`. E.g.:
+
 ```C
 const char *pMyPointer;
 ```
+
 * Same rules that apply for varibles/funtions, also applies when defining new derivade data types (structs/enums). When declaring a new typedef struct, be sure to append `_t` at the end of the name. Similarly, when declaring a typedef enum append `_e` at the end of the name; Also, the members of the enums must be declared using `UPPER_SNAKE_CASE`. E.g.:
+
 ```C
 typedef struct {
 	int my_int;
@@ -51,14 +61,19 @@ typedef enum {
 } new_enum_e;
 
 ```
+
 * Unlike variables/functions, Macros, must always be declared using `UPPER_CAMEL_CASE`, if the name consists of multiple words. E.g.:
+
 ```C
 #define OBJECT_AS_MARCO "My Macro"
 
 #define FUNCTION_AS_MACRO(a, b) ((a+b)/(a*b))
 ```
+
 ### Comments
+
 * Use `//` for single line comments. For multi-line comments  use a `/* */` block ; Try to keep each line even.
+
 ```C
 // This is a single line comment
 void my_func(void)
@@ -76,9 +91,12 @@ void other_func(void)
     do_something_else();
 }
 ```
+
 ### Documenting Code
+
 * Documenting is as important as writing good and clean code. It'll help us to easily understand how to make propper usage of the functionalities in the source/header files.
 * In this matter, when documenting your code please be sure follow [Doxygen style](https://www.doxygen.nl/). You are doing it by inserting special commands, for instance `@param`, into standard comments blocks, I.g.:
+
 ```C
 /**
  * @brief This function is used to controll the state (on/off)
@@ -92,7 +110,9 @@ void other_func(void)
  */
 void cosmos_socket_control(const char sn_value[15], int qty, cosmos_devices_t *pSocket);
 ```
+
 * When documenting a `#define` as well as members of a `struct` or `enum`, comments should be done using `/*!< */`.
+
 ```C
 #define COSMOS_MAP(x, in_min, in_max, out_min, out_max) ((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min) /*!< Arduino style map function */
 
@@ -103,12 +123,15 @@ void cosmos_socket_control(const char sn_value[15], int qty, cosmos_devices_t *p
 typedef struct {
     const char sn[15]; /*!< Serial Number of the devices */
     const int pin[3];  /*!< Pins in which the device will be connected | For LED -> {rPin, gPin, bPin} | For other -> {devPin, 0, 0} */
-    int state;         /*<! Initial state of the device (0: low ; 1: high) */
+    int state;         /*!< Initial state of the device (0: low ; 1: high) */
 } cosmos_devices_t;
 
 ```
+
 ### Coding style sample
+
 * Below you will see a code sample of all the points discussed above
+
 ```c
 #ifndef MAIN_COSMOS_PUMP_H_
 #define MAIN_COSMOS_PUMP_H_
@@ -195,29 +218,38 @@ void cosmos_pump_control(char *pTopic, cosmos_pump_t *pPump, int engage, cosmos_
 
 #endif /* MAIN_COSMOS_PUMP_H_ */
 ```
+
 ---
 
 ## Getting started
-* First of all, you'll need to install the PlatformIO Core (CLI) :ant:
+
+* First of all, you'll need to install the PlatformIO Core (CLI) 🐜
 * On a terminal you can simply type `pip install platformio` to get the client globally installed
-* Now you are able to use the `pio` command. For more information, type `pio -h` 
+* Now you are able to use the `pio` command. For more information, type `pio -h`
+
 ### Working on a existent project
+
 * Navigate to the project's folder you want to work on and find the *src* folder inside of it
 * Open the *main.c* inside the *src* folder
-* Start coding! :computer:
+* Start coding! 💻
 * If you want to build/test/upload you code, type `pio run -e [theNameOfTheProjectYouAreWorkingOn]`. For more information, type `pio run -h`
+
 ### Creating a new project
+
 * First you'll need to create the project's folder where the *main.c* and the *platformio.ini* files will live
 * Be sure to be as explicit and illustrative as possible when naming your project/folder ; e.g., 'automatedIrrigationSystem'
 * Once you've created the project directory, you'll need to create the *platformio.ini* file. This file, is used as project's configuration file that PlatformIO will use to build/upload/test your source code.
 * This file **must** include the following section (denoted by the `[header]` 'platformio')
+
 ```ini
 [platformio]
 lib_dir = ../.commonFiles/lib
 include_dir = ./tasks
 ```
+
 * This header will make a 'global directory' (named '.commonFiles') where all you libdeps, custom libs and include files will be stored, so you use them in all of your projects without the need of downloading them over and over.
 * You can configure the rest of the sections according to what the project needs. Here's an example for a project based of a ESP-WROOM-32E module, which includes a library for a BME680 sensor.
+
 ```ini
 [env:lilFlowerPal]
 platform = espressif32
@@ -230,14 +262,17 @@ lib_extra_dirs =
 lib_ldf_mode = chain+
 upload_speed = 250000
 ```
+
 * Next step, is to create the *src* folder and the *main.c* file inside of it.
-* Finally is time to get your hands dirty and start coding! :keyboard:
+* Finally is time to get your hands dirty and start coding! ⌨️
+
 > Below you can see a typical project structure based on the ESP-IDF framework. In the fisrt example (AKA 'project1') you can see a project that requires one extra task aside the entry point (main.c) and it also requeires a third-party dependencie (E.g., the [DHT driver from UnlceRus](https://github.com/UncleRus/esp-idf-lib/tree/master/components/dht)). The second example has a much more simple folder structure as, it only contains project's entry point.
+
 ```sequence
 globalDir/
 |--.commonFiles/
 |  |--lib/ ---> Libraries that are common to many projects.
-|	
+|
 |--project1/
 |  |--.pio/
 |  |  |--build/
