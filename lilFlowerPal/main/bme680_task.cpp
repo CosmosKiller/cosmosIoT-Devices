@@ -17,7 +17,6 @@
 #include <lib/support/CodeUtils.h>
 
 #include <bme680_task.h>
-#include <main_tasks_common.h>
 
 static const char *TAG = "bme680_task";
 

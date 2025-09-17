@@ -40,6 +40,7 @@ set(EXTRA_COMPONENT_DIRS
     "${ESP_MATTER_PATH}/../esp-idf-lib/components/bme680"
     "${ESP_MATTER_PATH}/../esp-idf-lib/components/i2cdev"
     "${ESP_MATTER_PATH}/../esp-idf-lib/components/esp_idf_lib_helpers"
+    "./../.commonFiles/lib/cosmos_sensor"
     ${extra_components_dirs_append})
 
 project(lilFlowerPal)

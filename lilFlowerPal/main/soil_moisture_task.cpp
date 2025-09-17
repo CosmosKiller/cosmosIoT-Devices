@@ -1,0 +1,115 @@
+/**
+ * @file soil_moisture_task.c
+ * @author Marcel Nahir Samur (mnsamur2014@gmail.com)
+ * @brief
+ * @version 0.1
+ * @date 2024-06-13
+ *
+ * @copyright Copyright (c) 2024
+ *
+ */
+
+#include <esp_err.h>
+#include <esp_log.h>
+#include <esp_random.h>
+#include <esp_timer.h>
+
+#include <lib/support/CodeUtils.h>
+
+#include <soil_moisture_task.h>
+
+static const char *TAG = "soil_moisture_task";
+
+/**
+ * @brief Context structure for the SM sensor
+ *        Holds all the state and configuration needed for the driver.
+ */
+typedef struct {
+    cosmos_sensor_t *sn_param;
+    sm_sensor_config_t *config;
+    esp_timer_handle_t timer;
+    bool is_initialized = false;
+} sm_sensor_ctx_t;
+
+static sm_sensor_ctx_t s_ctx;
+
+/**
+ * @brief Trigger moisture sensor readings
+ *
+ * @param pvParameters Parameter which can be passed to the task.
+ */
+static void soil_moisture_task_read_cb(void *pArg)
+{
+    uint32_t current_reading;
+
+    auto *ctx = (sm_sensor_ctx_t *)pArg;
+    if (!(ctx && ctx->config)) {
+        return;
+    }
+
+    cosmos_sensor_adc_read_raw(ctx->sn_param, 1);
+
+    current_reading = COSMOS_MAP(ctx->sn_param->reading, 3000, 1500, 0, 100);
+
+    if (ctx->config->cb) {
+        ctx->config->cb(ctx->config->endpoint_id, current_reading, ctx->config->user_data);
+    }
+
+    /*
+    As the soil gets wetter, the output value decreases, and as it gets drier,
+    the output value increases. When powered at 5V, the output ranges from
+    about 1.5V (for wet soil) to 3V (for dry soil).
+
+    Source: https://lastminuteengineers.com/capacitive-soil-moisture-sensor-arduino/
+    */
+
+    ESP_LOGI(TAG, "Moisture sensor: %ld\n", current_reading);
+}
+
+esp_err_t soil_moisture_task_sensor_init(sm_sensor_config_t *pConfig, cosmos_sensor_t *pSensor)
+{
+    esp_err_t err;
+
+    if (pConfig == NULL || pSensor == NULL) {
+        ESP_LOGE(TAG, "Invalid argument");
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (pConfig->cb == NULL) {
+        ESP_LOGE(TAG, "Callback function must be provided");
+        return ESP_ERR_INVALID_ARG;
+    }
+    if (s_ctx.is_initialized) {
+        ESP_LOGE(TAG, "Driver already initialized");
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    // Keep the configuration and sensor parameters
+    s_ctx.config = pConfig;
+    s_ctx.sn_param = pSensor;
+
+    // Create a periodic timer to read the sensor
+    const esp_timer_create_args_t timer_args = {
+        .callback = soil_moisture_task_read_cb,
+        .arg = &s_ctx,
+        .name = "sm_timer",
+    };
+
+    err = esp_timer_create(&timer_args, &s_ctx.timer);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to create timer for soil moisture sensor");
+        return err;
+    }
+
+    // Start the timer to trigger every 5 seconds
+    err = esp_timer_start_periodic(s_ctx.timer, pConfig->interval_ms * 1000);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to start timer for soil moisture sensor");
+        esp_timer_delete(s_ctx.timer);
+        return err;
+    }
+
+    s_ctx.is_initialized = true;
+    ESP_LOGI(TAG, "Soil moisture sensor initialized");
+
+    return ESP_OK;
+}

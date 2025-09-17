@@ -23,7 +23,7 @@ using namespace esp_matter;
 
 static const char *TAG = "pump_task";
 
-extern pump_task_config_t pump_data[4];
+extern pump_task_config_t pumps_config[4];
 
 /**
  * @brief Changes the state of the pump based on the attribute value.
@@ -48,10 +48,10 @@ esp_err_t pump_task_attribute_update(pump_task_handle_t pump_handle, uint16_t en
 
     /* Look for the correct endpoint_id */
     for (int i = 0; i < 4; i++) {
-        if (endpoint_id == pump_data[i].endpoint_id) {
+        if (endpoint_id == pumps_config[i].endpoint_id) {
             if (cluster_id == OnOff::Id) {
                 if (attribute_id == OnOff::Attributes::OnOff::Id) {
-                    err = pump_task_pump_set_on_off(val, pump_data[i].gpio);
+                    err = pump_task_pump_set_on_off(val, pumps_config[i].gpio);
                 }
             }
         }

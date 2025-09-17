@@ -19,7 +19,6 @@ using bme680_sensor_cb_t = void (*)(uint16_t endpoint_id, float value, void *use
  */
 typedef struct {
     struct {
-
         bme680_sensor_cb_t cb = NULL; /*!< This callback functon will be called periodically to report the temperature.*/
         uint16_t endpoint_id;         /*!< Endpoint_id associated with temperature sensor */
     } temperature;
