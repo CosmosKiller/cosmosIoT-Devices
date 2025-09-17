@@ -6,26 +6,7 @@
 #define NO_OF_SAMPLES 64   /*!< Standard sample rate for ADC multisampling */
 #define DEFAULT_VREF  1100 /*!< By design, the ADC reference voltage for ESP32 is 1100 mV */
 
-/**
- * @brief Types of sensor
- *
- */
-typedef enum {
-    SNR_TYPE_TH = 0, /*!< Temperature sensor */
-    SNR_TYPE_WL,     /*!< Water level sensor */
-    SNR_TYPE_SM,     /*!< Soil moisture sensor */
-    SNR_TYPE_PO,     /*!< Air Polution sensor */
-    SNR_TYPE_FM,     /*!< Flowmeter sensor */
-} cosmos_sensor_type_e;
-
-/**
- * @brief
- *
- */
-typedef union {
-    int i;   /*!< For percentual values */
-    float f; /*!< For non-percentual values */
-} cosmos_sensor_reading_u;
+#define COSMOS_MAP(x, in_min, in_max, out_min, out_max) ((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min) /*!< Arduino style map function */
 
 /**
  * @brief Use this struct
@@ -33,12 +14,11 @@ typedef union {
  * of the sensors
  */
 typedef struct {
-    cosmos_sensor_type_e type;    /*!< Sensor type */
-    const int pin_num;            /*!< Pin number in which the sensor is connected */
-    adc_channel_t snr_chn;        /*!< ADC Channel associated to the sensor pin. Refere to [this link](https://lastminuteengineers.com/esp32-wroom-32-pinout-reference/#esp32wroom32-adc-pins) for a correct designation of pins and ADC channels */
-    adc_cali_handle_t snr_handle; /*!< Sensor calibration handle */
-    bool cali_flag;               /*!< Calibration flag. Set to false when first declaring the sensor */
-    int reading;                  /*!< Sensor readings. Value interpretation depends of the sensor type */
+    const int pin_num;                   /*!< Pin number in which the sensor is connected */
+    adc_channel_t snr_chn;               /*!< ADC Channel associated to the sensor pin. Refere to [this link](https://lastminuteengineers.com/esp32-wroom-32-pinout-reference/#esp32wroom32-adc-pins) for a correct designation of pins and ADC channels */
+    adc_cali_handle_t snr_handle = NULL; /*!< Sensor calibration handle */
+    bool cali_flag = false;              /*!< Calibration flag. Set to false when first declaring the sensor */
+    int reading = 0;                     /*!< Sensor readings. Value interpretation depends of the sensor type */
 } cosmos_sensor_t;
 
 /**

@@ -3,7 +3,6 @@
 #include "esp_adc/adc_oneshot.h"
 #include "esp_log.h"
 
-#include "cosmos_devices.h"
 #include "cosmos_sensor.h"
 
 const static char *TAG = "COSMOS_SENSOR";
@@ -21,6 +20,7 @@ static adc_oneshot_unit_handle_t adc2_handle;
  *
  * @param pSensor Pointer to the strutct that contains all of the info
  * about the sensors used in the project
+ * @param snr_qty Quantity of sensors used in the project
  */
 static void cosmos_sensor_begin(cosmos_sensor_t *pSensor, int snr_qty)
 {
@@ -28,8 +28,8 @@ static void cosmos_sensor_begin(cosmos_sensor_t *pSensor, int snr_qty)
     static bool adc_unit2_ready = false;
     // Oneshot default params
     adc_oneshot_chan_cfg_t config = {
-        .bitwidth = ADC_BITWIDTH_12,
         .atten = ADC_ATTEN_DB_12,
+        .bitwidth = ADC_BITWIDTH_12,
     };
     // Cycle through all sensors
     for (int snr_idx = 0; snr_idx < snr_qty; snr_idx++) {
@@ -75,7 +75,6 @@ static void cosmos_sensor_begin(cosmos_sensor_t *pSensor, int snr_qty)
  *
  * @note Also, if possible, consider adding a 0.1uF capacitor to the
  * ADC input pad in use, when designing the PCB
- *
  * @param pSensor Pointer to the struct that contains the information of
  * the analog sensors
  * @return int Multisampled readings from adc1

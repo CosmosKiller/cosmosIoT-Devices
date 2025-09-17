@@ -1,4 +1,3 @@
-idf_component_register(SRCS cosmos_sensor.c
+idf_component_register(SRCS "cosmos_sensor.cpp"
                        INCLUDE_DIRS "."
-                       REQUIRES cosmos_devices
                        REQUIRES esp_adc)
