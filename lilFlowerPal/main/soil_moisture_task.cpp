@@ -25,8 +25,8 @@ static const char *TAG = "soil_moisture_task";
  *        Holds all the state and configuration needed for the driver.
  */
 typedef struct {
-    cosmos_sensor_t *sn_param;
-    sm_sensor_config_t *config;
+    cosmos_sensor_t *sn_param;  /*!< Sensors paramters array*/
+    sm_sensor_config_t *config; /*!< Sensor configurations array*/
     esp_timer_handle_t timer;
     bool is_initialized = false;
 } sm_sensor_ctx_t;
@@ -40,30 +40,31 @@ static sm_sensor_ctx_t s_ctx;
  */
 static void soil_moisture_task_read_cb(void *pArg)
 {
-    uint32_t current_reading;
+    float current_reading;
 
     auto *ctx = (sm_sensor_ctx_t *)pArg;
     if (!(ctx && ctx->config)) {
         return;
     }
 
-    cosmos_sensor_adc_read_raw(ctx->sn_param, 1);
+    cosmos_sensor_adc_read_raw(ctx->sn_param, 4);
 
-    current_reading = COSMOS_MAP(ctx->sn_param->reading, 3000, 1500, 0, 100);
+    for (size_t i = 0; i < SM_QTY; i++) {
+        current_reading = COSMOS_MAP(ctx->sn_param[i].reading, 3000, 1500, 0, 100);
 
-    if (ctx->config->cb) {
-        ctx->config->cb(ctx->config->endpoint_id, current_reading, ctx->config->user_data);
+        if (ctx->config[i].cb) {
+            ctx->config[i].cb(ctx->config[i].endpoint_id, current_reading, ctx->config[i].user_data);
+        }
+
+        /*
+        As the soil gets wetter, the output value decreases, and as it gets drier,
+        the output value increases. When powered at 5V, the output ranges from
+        about 1.5V (for wet soil) to 3V (for dry soil).
+
+        Source: https://lastminuteengineers.com/capacitive-soil-moisture-sensor-arduino/
+        */
+        ESP_LOGI(TAG, "Moisture sensor endpoint %d: %d\n", ctx->config[i].endpoint_id, ctx->sn_param[i].reading);
     }
-
-    /*
-    As the soil gets wetter, the output value decreases, and as it gets drier,
-    the output value increases. When powered at 5V, the output ranges from
-    about 1.5V (for wet soil) to 3V (for dry soil).
-
-    Source: https://lastminuteengineers.com/capacitive-soil-moisture-sensor-arduino/
-    */
-
-    ESP_LOGI(TAG, "Moisture sensor: %ld\n", current_reading);
 }
 
 esp_err_t soil_moisture_task_sensor_init(sm_sensor_config_t *pConfig, cosmos_sensor_t *pSensor)
@@ -91,7 +92,6 @@ esp_err_t soil_moisture_task_sensor_init(sm_sensor_config_t *pConfig, cosmos_sen
     const esp_timer_create_args_t timer_args = {
         .callback = soil_moisture_task_read_cb,
         .arg = &s_ctx,
-        .name = "sm_timer",
     };
 
     err = esp_timer_create(&timer_args, &s_ctx.timer);
@@ -109,7 +109,6 @@ esp_err_t soil_moisture_task_sensor_init(sm_sensor_config_t *pConfig, cosmos_sen
     }
 
     s_ctx.is_initialized = true;
-    ESP_LOGI(TAG, "Soil moisture sensor initialized");
 
     return ESP_OK;
 }

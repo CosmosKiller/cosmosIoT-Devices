@@ -9,10 +9,12 @@
 #include "esp_openthread_types.h"
 #endif
 
-#define PUMP0 GPIO_NUM_25
-#define PUMP1 GPIO_NUM_26
-#define PUMP2 GPIO_NUM_27
-#define PUMP3 GPIO_NUM_14
+#define PUMP_QTY 4
+
+#define PUMP1_GPIO GPIO_NUM_25
+#define PUMP2_GPIO GPIO_NUM_26
+#define PUMP3_GPIO GPIO_NUM_27
+#define PUMP4_GPIO GPIO_NUM_14
 
 #define DEFAULT_POWER false
 

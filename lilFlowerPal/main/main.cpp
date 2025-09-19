@@ -41,23 +41,21 @@ using namespace esp_matter::endpoint;
 using namespace chip::app::Clusters;
 
 // Pump definitions
-uint16_t pumps_qty = 0;
-pump_task_config_t pumps_config[4] = {};
-gpio_pump_t pump_gpios[4] = {
-    {.GPIO_PIN_VALUE = PUMP0},
-    {.GPIO_PIN_VALUE = PUMP1},
-    {.GPIO_PIN_VALUE = PUMP2},
-    {.GPIO_PIN_VALUE = PUMP3},
+pump_task_config_t pumps_config[PUMP_QTY] = {};
+gpio_pump_t pump_gpios[PUMP_QTY] = {
+    {.GPIO_PIN_VALUE = PUMP1_GPIO},
+    {.GPIO_PIN_VALUE = PUMP2_GPIO},
+    {.GPIO_PIN_VALUE = PUMP3_GPIO},
+    {.GPIO_PIN_VALUE = PUMP4_GPIO},
 };
 
 // Soil moisture sensor definitions
-uint16_t sm_sensor_qty = 0;
-sm_sensor_config_t sm_sensors_config[4] = {};
-cosmos_sensor_t sm_sensors[4] = {
-    {.pin_num = SN1_GPIO, .snr_chn = SN1_CHN},
-    {.pin_num = SN2_GPIO, .snr_chn = SN2_CHN},
-    {.pin_num = SN3_GPIO, .snr_chn = SN3_CHN},
-    {.pin_num = SN4_GPIO, .snr_chn = SN4_CHN},
+sm_sensor_config_t sm_sensors_config[SM_QTY] = {};
+cosmos_sensor_t sm_sensors[SM_QTY] = {
+    {.pin_num = SM1_GPIO, .snr_chn = SM1_CHN},
+    {.pin_num = SM2_GPIO, .snr_chn = SM2_CHN},
+    {.pin_num = SM3_GPIO, .snr_chn = SM3_CHN},
+    {.pin_num = SM4_GPIO, .snr_chn = SM4_CHN},
 };
 
 #if CONFIG_ENABLE_ENCRYPTED_OTA
@@ -70,9 +68,7 @@ static const uint16_t s_decryption_key_len = decryption_key_end - decryption_key
 
 // Function declarations
 static esp_err_t app_create_pump(gpio_pump_t *pPump, node_t *pNode);
-static void app_init_pump(void *pvParameters);
-static esp_err_t app_create_sm_sensor(sm_sensor_config_t *pSensor, node_t *pNode);
-static void app_init_sm_sensor(void *pvParameters);
+static esp_err_t app_create_sm_sensor(sm_sensor_config_t *pConfig, node_t *pNode);
 static void temp_sensor_notification(uint16_t endpoint_id, float temp, void *user_data);
 static void humidity_sensor_notification(uint16_t endpoint_id, float humidity, void *user_data);
 static void pressure_sensor_notification(uint16_t endpoint_id, float pressure, void *user_data);
@@ -148,24 +144,13 @@ extern "C" void app_main()
             },
     };
 
-    // Create soil moisture sensor endpoints for each configured GPIO pin
-    app_create_sm_sensor(&sm_sensors_config[0], node);
-    sm_sensors_config[0].cb = humidity_sensor_notification;
+    // Create soil moisture sensor endpoints and init driver
+    app_create_sm_sensor(sm_sensors_config, node);
+    soil_moisture_task_sensor_init(sm_sensors_config, sm_sensors);
 
-    app_create_sm_sensor(&sm_sensors_config[1], node);
-    sm_sensors_config[1].cb = humidity_sensor_notification;
-
-    app_create_sm_sensor(&sm_sensors_config[2], node);
-    sm_sensors_config[2].cb = humidity_sensor_notification;
-
-    app_create_sm_sensor(&sm_sensors_config[3], node);
-    sm_sensors_config[3].cb = humidity_sensor_notification;
-
-    // Create pump endpoints for each configured GPIO pin
-    app_create_pump(&pump_gpios[0], node);
-    app_create_pump(&pump_gpios[1], node);
-    app_create_pump(&pump_gpios[2], node);
-    app_create_pump(&pump_gpios[3], node);
+    // Create pump endpoints endpoints and init driver
+    app_create_pump(pump_gpios, node);
+    pump_task_init(pump_gpios);
 
 #if CHIP_DEVICE_CONFIG_ENABLE_THREAD
     /* Set OpenThread platform config */
@@ -190,14 +175,6 @@ extern "C" void app_main()
         ESP_LOGE(TAG, "bme680_task_sensor_init failed: %d", err);
         return;
     }
-
-    // Start the soil moisture sensor tasks
-    xTaskCreatePinnedToCore(app_init_sm_sensor, "app_init_sm_sensor", SOIL_MOISTURE_TASK_STACK_SIZE, NULL,
-                            SOIL_MOISTURE_TASK_PRIORITY, NULL, SOIL_MOISTURE_TASK_CORE_ID);
-
-    // Start the pump tasks
-    xTaskCreatePinnedToCore(app_init_pump, "app_init_pump", PUMP_TASK_STACK_SIZE, NULL,
-                            PUMP_TASK_PRIORITY, NULL, PUMP_TASK_CORE_ID);
 
 #if CONFIG_ENABLE_ENCRYPTED_OTA
     err = esp_matter_ota_requestor_encrypted_init(s_decryption_key, s_decryption_key_len);
@@ -236,49 +213,29 @@ static esp_err_t app_create_pump(gpio_pump_t *pPump, node_t *pNode)
         return ESP_ERR_INVALID_ARG;
     }
 
-    // Create the pump endpoint
-    on_off_plugin_unit::config_t pump_config;
-    pump_config.on_off.on_off = DEFAULT_POWER;
-    endpoint_t *endpoint = on_off_plugin_unit::create(pNode, &pump_config, ENDPOINT_FLAG_NONE, pPump);
+    for (size_t i = 0; i < PUMP_QTY; i++) {
+        // Create the pump endpoint
+        on_off_plugin_unit::config_t pump_config;
+        pump_config.on_off.on_off = DEFAULT_POWER;
+        endpoint_t *endpoint = on_off_plugin_unit::create(pNode, &pump_config, ENDPOINT_FLAG_NONE, &pPump[i]);
 
-    // Confirm that node and endpoint were created successfully
-    if (!endpoint) {
-        ESP_LOGE(TAG, "Failed to create plug endpoint");
-        return ESP_FAIL;
-    }
-
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize plug");
-    }
-
-    // Check for maximum plugs that can be configured.
-    if (pumps_qty < 4) {
-        pumps_config[pumps_qty].gpio = pPump->GPIO_PIN_VALUE;
-        pumps_config[pumps_qty].endpoint_id = endpoint::get_id(endpoint);
-        pumps_qty++;
-    } else {
-        ESP_LOGE(TAG, "Maximum plugs configuration limit exceeded!!!");
-        return ESP_FAIL;
-    }
-
-    // Get Endpoints Id
-    uint16_t pump_endpoint_id = endpoint::get_id(endpoint);
-    ESP_LOGI(TAG, "Pump %d created with endpoint_id %d", pumps_qty, pump_endpoint_id);
-
-    return err;
-}
-
-// Cycles through each configured pump and initializes it.
-static void app_init_pump(void *pvParameters)
-{
-    for (int i = 0; i < pumps_qty; ++i) {
-        esp_err_t r = pump_task_init(&pump_gpios[i]);
-        if (r != ESP_OK) {
-            ESP_LOGE(TAG, "pump_task_init failed for pump %d", i);
+        // Confirm that node and endpoint were created successfully
+        if (!endpoint) {
+            ESP_LOGE(TAG, "Failed to create pump endpoint");
+            return ESP_FAIL;
         }
-        vTaskDelay(pdMS_TO_TICKS(50)); // small delay between inits
+
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to initialize pump");
+        }
+
+        pumps_config[i].gpio = pPump->GPIO_PIN_VALUE;
+        pumps_config[i].endpoint_id = endpoint::get_id(endpoint);
+
+        // Get Endpoints Id
+        ESP_LOGI(TAG, "Pump %d created with endpoint_id %d", i, pumps_config[i].endpoint_id);
     }
-    vTaskDelete(NULL);
+    return err;
 }
 
 /*!
@@ -286,7 +243,7 @@ static void app_init_pump(void *pvParameters)
  */
 
 // Creates soil moisture endpoint mapping for each GPIO pin configured.
-static esp_err_t app_create_sm_sensor(sm_sensor_config_t *pSensor, node_t *pNode)
+static esp_err_t app_create_sm_sensor(sm_sensor_config_t *pConfig, node_t *pNode)
 {
     esp_err_t err = ESP_OK;
 
@@ -295,52 +252,35 @@ static esp_err_t app_create_sm_sensor(sm_sensor_config_t *pSensor, node_t *pNode
         return ESP_ERR_INVALID_ARG;
     }
 
-    if (!pSensor) {
+    if (!pConfig) {
         ESP_LOGE(TAG, "Sensor cannot be NULL");
         return ESP_ERR_INVALID_ARG;
     }
 
-    // Create the soil moisture endpoint
-    humidity_sensor::config_t sm_sensor_config;
-    endpoint_t *endpoint = humidity_sensor::create(pNode, &sm_sensor_config, ENDPOINT_FLAG_NONE, NULL);
+    for (size_t i = 0; i < SM_QTY; i++) {
+        // Create the soil moisture endpoint
+        humidity_sensor::config_t sm_sensor_config;
+        endpoint_t *endpoint = humidity_sensor::create(pNode, &sm_sensor_config, ENDPOINT_FLAG_NONE, NULL);
 
-    // Confirm that node and endpoint were created successfully
-    if (!endpoint) {
-        ESP_LOGE(TAG, "Failed to create plug endpoint");
-        return ESP_FAIL;
+        // Confirm that node and endpoint were created successfully
+        if (!endpoint) {
+            ESP_LOGE(TAG, "Failed to create soil sensor endpoint");
+            return ESP_FAIL;
+        }
+
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to initialize soil sensor");
+            return ESP_FAIL;
+        }
+
+        pConfig[i].endpoint_id = endpoint::get_id(endpoint);
+        pConfig[i].cb = humidity_sensor_notification;
+
+        // Get Endpoints Id
+        ESP_LOGI(TAG, "Soil sensor %d created with endpoint_id %d", i, pConfig[i].endpoint_id);
     }
-
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize plug");
-    }
-
-    // Check for maximum plugs that can be configured.
-    if (sm_sensor_qty < 4) {
-        sm_sensors_config[sm_sensor_qty].endpoint_id = endpoint::get_id(endpoint);
-        sm_sensor_qty++;
-    } else {
-        ESP_LOGE(TAG, "Maximum plugs configuration limit exceeded!!!");
-        return ESP_FAIL;
-    }
-
-    // Get Endpoints Id
-    uint16_t sm_sensor_endpoint_id = endpoint::get_id(endpoint);
-    ESP_LOGI(TAG, "Pump %d created with endpoint_id %d", sm_sensor_qty, sm_sensor_endpoint_id);
 
     return err;
-}
-
-// Cycles through each configured soil moisture sensor and initializes it.
-static void app_init_sm_sensor(void *pvParameters)
-{
-    for (int i = 0; i < sm_sensor_qty; ++i) {
-        esp_err_t r = soil_moisture_task_sensor_init(&sm_sensors_config[i], &sm_sensors[i]);
-        if (r != ESP_OK) {
-            ESP_LOGE(TAG, "soil_moisture_task_sensor_init %d", i);
-            vTaskDelay(pdMS_TO_TICKS(50)); // small delay between inits
-        }
-        vTaskDelete(NULL);
-    }
 }
 
 /*

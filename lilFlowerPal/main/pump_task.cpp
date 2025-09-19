@@ -23,7 +23,7 @@ using namespace esp_matter;
 
 static const char *TAG = "pump_task";
 
-extern pump_task_config_t pumps_config[4];
+extern pump_task_config_t pumps_config[PUMP_QTY];
 
 /**
  * @brief Changes the state of the pump based on the attribute value.
@@ -47,7 +47,7 @@ esp_err_t pump_task_attribute_update(pump_task_handle_t pump_handle, uint16_t en
     esp_err_t err = ESP_OK;
 
     /* Look for the correct endpoint_id */
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < PUMP_QTY; i++) {
         if (endpoint_id == pumps_config[i].endpoint_id) {
             if (cluster_id == OnOff::Id) {
                 if (attribute_id == OnOff::Attributes::OnOff::Id) {
@@ -61,12 +61,14 @@ esp_err_t pump_task_attribute_update(pump_task_handle_t pump_handle, uint16_t en
 
 esp_err_t pump_task_init(const gpio_pump_t *pPump)
 {
-    ESP_LOGI(TAG, "Initializing pump at GPIO %d", pPump->GPIO_PIN_VALUE);
+    for (size_t i = 0; i < PUMP_QTY; i++) {
+        ESP_LOGI(TAG, "Initializing pump at GPIO %d", pPump[i].GPIO_PIN_VALUE);
 
-    esp_rom_gpio_pad_select_gpio((gpio_num_t)pPump->GPIO_PIN_VALUE);
-    gpio_set_direction((gpio_num_t)pPump->GPIO_PIN_VALUE, GPIO_MODE_OUTPUT);
-    gpio_intr_disable((gpio_num_t)pPump->GPIO_PIN_VALUE);
-    gpio_set_level((gpio_num_t)pPump->GPIO_PIN_VALUE, 0); // Ensure pump is off at start
+        esp_rom_gpio_pad_select_gpio((gpio_num_t)pPump[i].GPIO_PIN_VALUE);
+        gpio_set_direction((gpio_num_t)pPump[i].GPIO_PIN_VALUE, GPIO_MODE_OUTPUT);
+        gpio_intr_disable((gpio_num_t)pPump[i].GPIO_PIN_VALUE);
+        gpio_set_level((gpio_num_t)pPump[i].GPIO_PIN_VALUE, 0); // Ensure pump is off at start
+    }
 
     return ESP_OK;
 }
