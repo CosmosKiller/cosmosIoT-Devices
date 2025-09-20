@@ -27,11 +27,11 @@
 #include <app/server/Server.h>
 
 // Include project libraries
+#include <analog_sensor_task.h>
 #include <bme680_task.h>
 #include <main_tasks_common.h>
 #include <matter_task.h>
 #include <pump_task.h>
-#include <soil_moisture_task.h>
 
 static const char *TAG = "app_main";
 
@@ -49,13 +49,14 @@ gpio_pump_t pump_gpios[PUMP_QTY] = {
     {.GPIO_PIN_VALUE = PUMP4_GPIO},
 };
 
-// Soil moisture sensor definitions
-sm_sensor_config_t sm_sensors_config[SM_QTY] = {};
-cosmos_sensor_t sm_sensors[SM_QTY] = {
-    {.pin_num = SM1_GPIO, .snr_chn = SM1_CHN},
-    {.pin_num = SM2_GPIO, .snr_chn = SM2_CHN},
-    {.pin_num = SM3_GPIO, .snr_chn = SM3_CHN},
-    {.pin_num = SM4_GPIO, .snr_chn = SM4_CHN},
+// Sensor definitions
+an_sensor_config_t sensors_config[SNR_QTY] = {};
+cosmos_sensor_t sensors[SNR_QTY] = {
+    {.pin_num = SM1_GPIO, .snr_chn = SM1_CHN, .snr_type = SNR_TYPE_SM},
+    {.pin_num = SM2_GPIO, .snr_chn = SM2_CHN, .snr_type = SNR_TYPE_SM},
+    {.pin_num = SM3_GPIO, .snr_chn = SM3_CHN, .snr_type = SNR_TYPE_SM},
+    {.pin_num = SM4_GPIO, .snr_chn = SM4_CHN, .snr_type = SNR_TYPE_SM},
+    {.pin_num = WL1_GPIO, .snr_chn = WL1_CHN, .snr_type = SNR_TYPE_WL},
 };
 
 #if CONFIG_ENABLE_ENCRYPTED_OTA
@@ -68,7 +69,7 @@ static const uint16_t s_decryption_key_len = decryption_key_end - decryption_key
 
 // Function declarations
 static esp_err_t app_create_pump(gpio_pump_t *pPump, node_t *pNode);
-static esp_err_t app_create_sm_sensor(sm_sensor_config_t *pConfig, node_t *pNode);
+static esp_err_t app_create_sm_sensor(an_sensor_config_t *pConfig, node_t *pNode);
 static void temp_sensor_notification(uint16_t endpoint_id, float temp, void *user_data);
 static void humidity_sensor_notification(uint16_t endpoint_id, float humidity, void *user_data);
 static void pressure_sensor_notification(uint16_t endpoint_id, float pressure, void *user_data);
@@ -125,7 +126,7 @@ extern "C" void app_main()
         return;
     }
 
-    // Initialize BME680 sensor task
+    // Set BME680 config
     static bme680_sensor_config_t bme680_sensor_config = {
         .temperature =
             {
@@ -144,13 +145,11 @@ extern "C" void app_main()
             },
     };
 
-    // Create soil moisture sensor endpoints and init driver
-    app_create_sm_sensor(sm_sensors_config, node);
-    soil_moisture_task_sensor_init(sm_sensors_config, sm_sensors);
+    // Create soil moisture sensor endpoints
+    app_create_sm_sensor(sensors_config, node);
 
-    // Create pump endpoints endpoints and init driver
+    // Create pump endpoints endpoints
     app_create_pump(pump_gpios, node);
-    pump_task_init(pump_gpios);
 
 #if CHIP_DEVICE_CONFIG_ENABLE_THREAD
     /* Set OpenThread platform config */
@@ -176,6 +175,20 @@ extern "C" void app_main()
         return;
     }
 
+    // Initialize analog sensor task
+    err = analog_sensor_task_sensor_init(sensors_config, sensors);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "analog_sensor_task_sensor_init failed: %d", err);
+        return;
+    }
+
+    // Initialize pump task
+    err = pump_task_init(pump_gpios);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "pump_task_init failed: %d", err);
+        return;
+    }
+
 #if CONFIG_ENABLE_ENCRYPTED_OTA
     err = esp_matter_ota_requestor_encrypted_init(s_decryption_key, s_decryption_key_len);
     if (err != ESP_OK) {
@@ -193,10 +206,6 @@ extern "C" void app_main()
     esp_matter::console::init();
 #endif
 }
-
-/*!
- * PUMP FUNCTIONS DEFINITIONS
- */
 
 // Creates pump-endpoint mapping for each GPIO pin configured.
 static esp_err_t app_create_pump(gpio_pump_t *pPump, node_t *pNode)
@@ -238,12 +247,8 @@ static esp_err_t app_create_pump(gpio_pump_t *pPump, node_t *pNode)
     return err;
 }
 
-/*!
- *  SOIL MOISTURE FUNCTIONS DEFINITIONS
- */
-
 // Creates soil moisture endpoint mapping for each GPIO pin configured.
-static esp_err_t app_create_sm_sensor(sm_sensor_config_t *pConfig, node_t *pNode)
+static esp_err_t app_create_sm_sensor(an_sensor_config_t *pConfig, node_t *pNode)
 {
     esp_err_t err = ESP_OK;
 
@@ -257,7 +262,7 @@ static esp_err_t app_create_sm_sensor(sm_sensor_config_t *pConfig, node_t *pNode
         return ESP_ERR_INVALID_ARG;
     }
 
-    for (size_t i = 0; i < SM_QTY; i++) {
+    for (size_t i = 0; i < SNR_QTY; i++) {
         // Create the soil moisture endpoint
         humidity_sensor::config_t sm_sensor_config;
         endpoint_t *endpoint = humidity_sensor::create(pNode, &sm_sensor_config, ENDPOINT_FLAG_NONE, NULL);

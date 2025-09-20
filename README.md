@@ -223,47 +223,48 @@ void cosmos_pump_control(char *pTopic, cosmos_pump_t *pPump, int engage, cosmos_
 
 ## Getting started
 
-* First of all, you'll need to install the PlatformIO Core (CLI) 🐜
-* On a terminal you can simply type `pip install platformio` to get the client globally installed
-* Now you are able to use the `pio` command. For more information, type `pio -h`
+* We are currently working with the ESP-IDF SDK for all of our projects.
+* In order to use ESP-IDF with the ESP32, you need to install some software packages based on your Operating System. We recommend Ubuntu 22.04
+* On a terminal run the following commands:
+
+  ```bash
+  sudo apt-get install git wget flex bison gperf python3 python3-pip python3-venv cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0
+  ```
+* To get the ESP-IDF, open Terminal, and run the following commands:
+
+  ```bash
+  mkdir -p ~/esp
+  cd ~/esp
+  git clone -b v5.5.1 --recursive https://github.com/espressif/esp-idf.git
+  ```
+* Aside from the ESP-IDF, you also need to install the tools used by ESP-IDF, such as the compiler, debugger, Python packages, etc, for projects supporting ESP32:
+
+  ```bash
+  cd ~/esp/esp-idf
+  ./install.sh esp32
+  ```
+* Finally lets setup the environment variables
+* In the terminal where you are going to use ESP-IDF, run:
+
+  ```bash
+  . $HOME/esp/esp-idf/export.sh
+  ```
+* Now you are able to use the `idy.py` command. For more information, type `idf.py --help` or visit the [ESP-IDF Programming Guide](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/get-started/index.html)
 
 ### Working on a existent project
 
-* Navigate to the project's folder you want to work on and find the *src* folder inside of it
-* Open the *main.c* inside the *src* folder
+* Navigate to the project's folder you want to work on and find the *main* folder inside of it
+* Open the *main.c (or main.cpp if it corresponds)* inside the *main* folder
 * Start coding! 💻
-* If you want to build/test/upload you code, type `pio run -e [theNameOfTheProjectYouAreWorkingOn]`. For more information, type `pio run -h`
+* If you want to build/upload you code, type `idf.py falsh [theNameOfThePridfojectYouAreWorkingOn]`. For more information, type `idf.py flash --help`
 
 ### Creating a new project
 
-* First you'll need to create the project's folder where the *main.c* and the *platformio.ini* files will live
+> As you'll notice ESP-IDF uses CMake as it's build system. For further information about CMake and how to set CMake files, please visit the [CMake documentation website](https://cmake.org/cmake/help/latest/index.html)
+
+* First you'll need to create the project's folder where the *main.c/cpp* and the *CMakeLists.txt* files will live
 * Be sure to be as explicit and illustrative as possible when naming your project/folder ; e.g., 'automatedIrrigationSystem'
-* Once you've created the project directory, you'll need to create the *platformio.ini* file. This file, is used as project's configuration file that PlatformIO will use to build/upload/test your source code.
-* This file **must** include the following section (denoted by the `[header]` 'platformio')
-
-```ini
-[platformio]
-lib_dir = ../.commonFiles/lib
-include_dir = ./tasks
-```
-
-* This header will make a 'global directory' (named '.commonFiles') where all you libdeps, custom libs and include files will be stored, so you use them in all of your projects without the need of downloading them over and over.
-* You can configure the rest of the sections according to what the project needs. Here's an example for a project based of a ESP-WROOM-32E module, which includes a library for a BME680 sensor.
-
-```ini
-[env:lilFlowerPal]
-platform = espressif32
-board = esp32doit-devkit-v1
-framework = espidf
-build_flags =
-    -D CONFIG_I2CDEV_TIMEOUT=1000
-lib_extra_dirs = 
-    /home/cosmoskiller/.platformio/packages/framework-espidf/components/esp-idf-lib/components
-lib_ldf_mode = chain+
-upload_speed = 250000
-```
-
-* Next step, is to create the *src* folder and the *main.c* file inside of it.
+* Next step, is to create the *main* folder and the *main.c/cpp* file inside of it.
 * Finally is time to get your hands dirty and start coding! ⌨️
 
 > Below you can see a typical project structure based on the ESP-IDF framework. In the fisrt example (AKA 'project1') you can see a project that requires one extra task aside the entry point (main.c) and it also requeires a third-party dependencie (E.g., the [DHT driver from UnlceRus](https://github.com/UncleRus/esp-idf-lib/tree/master/components/dht)). The second example has a much more simple folder structure as, it only contains project's entry point.
@@ -274,31 +275,19 @@ globalDir/
 |  |--lib/ ---> Libraries that are common to many projects.
 |
 |--project1/
-|  |--.pio/
-|  |  |--build/
-|  |  |
-|  |  |--libdeps/ ---> Third-party dependencies.
-|  |  |  |
-|  |  |  |--project1/
-|  |  |     |
-|  |  |     |--custom_lib/
-|  |  |        |--custom_lib.h
-|  |  |        |--custom_lib.c
+|  |
+|  |--build/
 |  |
 |  |--src/ ---> Project's entry point and tasks source code.
-|  |  |--main.c
-|  |  |--my_library.c
+|  |  |--main.cpp
+|  |  |--my_library.cpp
 |  |
 |  |--tasks/ ---> Project tasks header files.
 |  |  |--my_library.h
-|  |
-|  |--platfomio.ini
 |
 |--project2/
-   |--src/
+   |--main/
    |  |--main.c
-   |
-   |--platfomio.ini
 ```
 
-## Copyright © 2024, Marcel Nahir Samur
+## Copyright © 2025, Marcel Nahir Samur

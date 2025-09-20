@@ -9,6 +9,18 @@
 #define COSMOS_MAP(x, in_min, in_max, out_min, out_max) ((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min) /*!< Arduino style map function */
 
 /**
+ * @brief Types of sensor
+ *
+ */
+typedef enum {
+    SNR_TYPE_TH = 0, /*!< Temperature sensor */
+    SNR_TYPE_WL,     /*!< Water level sensor */
+    SNR_TYPE_SM,     /*!< Soil moisture sensor */
+    SNR_TYPE_PO,     /*!< Air Polution sensor */
+    SNR_TYPE_FM,     /*!< Flowmeter sensor */
+} cosmos_sensor_type_e;
+
+/**
  * @brief Use this struct
  * to store the parameters
  * of the sensors
@@ -19,6 +31,7 @@ typedef struct {
     adc_cali_handle_t snr_handle = NULL; /*!< Sensor calibration handle */
     bool cali_flag = false;              /*!< Calibration flag. Set to false when first declaring the sensor */
     int reading = 0;                     /*!< Sensor readings. Value interpretation depends of the sensor type */
+    cosmos_sensor_type_e snr_type;       /*!< Sensor type */
 } cosmos_sensor_t;
 
 /**

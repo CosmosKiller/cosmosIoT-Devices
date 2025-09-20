@@ -1,5 +1,5 @@
 /**
- * @file soil_moisture_task.c
+ * @file analog_sensor_task.c
  * @author Marcel Nahir Samur (mnsamur2014@gmail.com)
  * @brief
  * @version 0.1
@@ -16,41 +16,54 @@
 
 #include <lib/support/CodeUtils.h>
 
-#include <soil_moisture_task.h>
+#include <analog_sensor_task.h>
 
-static const char *TAG = "soil_moisture_task";
+static const char *TAG = "analog_sensor_task";
 
 /**
- * @brief Context structure for the SM sensor
+ * @brief Context structure for the sensors
  *        Holds all the state and configuration needed for the driver.
  */
 typedef struct {
     cosmos_sensor_t *sn_param;  /*!< Sensors paramters array*/
-    sm_sensor_config_t *config; /*!< Sensor configurations array*/
+    an_sensor_config_t *config; /*!< Sensor configurations array*/
     esp_timer_handle_t timer;
     bool is_initialized = false;
-} sm_sensor_ctx_t;
+} an_sensor_ctx_t;
 
-static sm_sensor_ctx_t s_ctx;
+static an_sensor_ctx_t s_ctx;
 
 /**
- * @brief Trigger moisture sensor readings
+ * @brief Trigger sensor readings
  *
  * @param pvParameters Parameter which can be passed to the task.
  */
-static void soil_moisture_task_read_cb(void *pArg)
+static void analog_sensor_task_read_cb(void *pArg)
 {
     float current_reading;
 
-    auto *ctx = (sm_sensor_ctx_t *)pArg;
+    auto *ctx = (an_sensor_ctx_t *)pArg;
     if (!(ctx && ctx->config)) {
         return;
     }
 
-    cosmos_sensor_adc_read_raw(ctx->sn_param, 4);
+    cosmos_sensor_adc_read_raw(ctx->sn_param, SNR_QTY);
 
-    for (size_t i = 0; i < SM_QTY; i++) {
-        current_reading = COSMOS_MAP(ctx->sn_param[i].reading, 3000, 1500, 0, 100);
+    for (size_t i = 0; i < SNR_QTY; i++) {
+
+        switch (ctx->sn_param[i].snr_type) {
+        case SNR_TYPE_WL:
+            current_reading = ctx->sn_param[i].reading;
+            break;
+
+        case SNR_TYPE_SM:
+            current_reading = COSMOS_MAP(ctx->sn_param[i].reading, 3000, 1500, 0, 100);
+            break;
+
+        default:
+            ESP_LOGE(TAG, "Sensor type %d not supported", ctx->sn_param[i].snr_type);
+            break;
+        }
 
         if (ctx->config[i].cb) {
             ctx->config[i].cb(ctx->config[i].endpoint_id, current_reading, ctx->config[i].user_data);
@@ -67,7 +80,7 @@ static void soil_moisture_task_read_cb(void *pArg)
     }
 }
 
-esp_err_t soil_moisture_task_sensor_init(sm_sensor_config_t *pConfig, cosmos_sensor_t *pSensor)
+esp_err_t analog_sensor_task_sensor_init(an_sensor_config_t *pConfig, cosmos_sensor_t *pSensor)
 {
     esp_err_t err;
 
@@ -89,12 +102,13 @@ esp_err_t soil_moisture_task_sensor_init(sm_sensor_config_t *pConfig, cosmos_sen
     s_ctx.sn_param = pSensor;
 
     // Create a periodic timer to read the sensor
-    const esp_timer_create_args_t timer_args = {
-        .callback = soil_moisture_task_read_cb,
+    const esp_timer_create_args_t read_args = {
+        .callback = analog_sensor_task_read_cb,
         .arg = &s_ctx,
+        .name = "analog_sensor_read",
     };
 
-    err = esp_timer_create(&timer_args, &s_ctx.timer);
+    err = esp_timer_create(&read_args, &s_ctx.timer);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to create timer for soil moisture sensor");
         return err;
