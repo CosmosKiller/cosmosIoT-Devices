@@ -1,0 +1,6 @@
+recorder:
+  purge_keep_days: 7
+  commit_interval: 30
+  include:
+    domains:
+      - sensor

@@ -1,0 +1,22 @@
+automation:
+  - alias: "Notify when new sensor is added"
+    mode: single
+    trigger:
+      - platform: event
+        event_type: entity_registry_updated   # fires only when a new entity is created
+        event_data:
+          action: create
+    condition:
+      - condition: template
+        value_template: >
+          {{ trigger.event.data.entity_id.startswith('sensor.') }}
+    action:
+      - service: notify.mobile_app_yourphone
+        data:
+          title: "New Sensor Added 🎉"
+          message: "New sensor '{{ trigger.event.data.entity_id }}' was just added and is now logged."
+      - service: logbook.log
+        data:
+          name: "Sensor Auto"
+          message: "New sensor {{ trigger.event.data.entity_id }} added to HA + InfluxDB."
+          entity_id: "{{ trigger.event.data.entity_id }}"

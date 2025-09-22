@@ -1,0 +1,7 @@
+automation:
+  - alias: "AI Irrigation Decision"
+    trigger:
+      - platform: time_pattern
+        minutes: "/30"
+    action:
+      - service: python_script.irrigation_ai

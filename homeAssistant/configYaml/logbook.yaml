@@ -1,0 +1,4 @@
+logbook:
+  include:
+    domains:
+      - sensor
