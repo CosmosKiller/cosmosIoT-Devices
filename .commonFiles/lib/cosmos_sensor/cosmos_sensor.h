@@ -3,10 +3,22 @@
 
 #include "esp_adc/adc_cali.h"
 
-#define NO_OF_SAMPLES 64   /*!< Standard sample rate for ADC multisampling */
+#define NO_OF_SAMPLES 16   /*!< Standard sample rate for ADC multisampling */
+#define FILTER_SIZE   10   /*!< moving average window size */
 #define DEFAULT_VREF  1100 /*!< By design, the ADC reference voltage for ESP32 is 1100 mV */
 
 #define COSMOS_MAP(x, in_min, in_max, out_min, out_max) ((x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min) /*!< Arduino style map function */
+
+/**
+ * @brief
+ *
+ */
+typedef struct {
+    int buffer[FILTER_SIZE];
+    int index;
+    int count;
+    long sum;
+} cosmos_sensor_moving_avg_t;
 
 /**
  * @brief Types of sensor
@@ -44,6 +56,6 @@ typedef struct {
  * information
  * @param snr_qty Quantity of sensors used in the project
  */
-void cosmos_sensor_adc_read_raw(cosmos_sensor_t *pSensor, int snr_qty);
+void cosmos_sensor_adc_read_voltage(cosmos_sensor_t *pSensor, int snr_qty);
 
 #endif /* MAIN_COSMOS_SENSOR_H_ */

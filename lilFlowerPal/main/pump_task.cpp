@@ -32,11 +32,11 @@ extern pump_task_config_t pumps_config[PUMP_QTY];
  * @param pump_gpio GPIO pin associated with the pump
  * @return esp_err_t
  */
-static esp_err_t pump_task_pump_set_on_off(esp_matter_attr_val_t *val, const int pump_gpio)
+static esp_err_t pump_task_pump_set_on_off(esp_matter_attr_val_t *val, gpio_num_t pump_gpio)
 {
     /* print val as text */
-    ESP_LOGI(TAG, "Changing the pump state to %s!", val->val.b ? "ON" : "OFF");
-    gpio_set_level((gpio_num_t)pump_gpio, val->val.b);
+    ESP_LOGI(TAG, "Changing the pump GPIO %d state to %s!", pump_gpio, val->val.b ? "ON" : "OFF");
+    gpio_set_level(pump_gpio, val->val.b);
 
     return ESP_OK;
 }
@@ -64,10 +64,10 @@ esp_err_t pump_task_init(const gpio_pump_t *pPump)
     for (size_t i = 0; i < PUMP_QTY; i++) {
         ESP_LOGI(TAG, "Initializing pump at GPIO %d", pPump[i].GPIO_PIN_VALUE);
 
-        esp_rom_gpio_pad_select_gpio((gpio_num_t)pPump[i].GPIO_PIN_VALUE);
-        gpio_set_direction((gpio_num_t)pPump[i].GPIO_PIN_VALUE, GPIO_MODE_OUTPUT);
-        gpio_intr_disable((gpio_num_t)pPump[i].GPIO_PIN_VALUE);
-        gpio_set_level((gpio_num_t)pPump[i].GPIO_PIN_VALUE, 0); // Ensure pump is off at start
+        esp_rom_gpio_pad_select_gpio(pPump[i].GPIO_PIN_VALUE);
+        gpio_set_direction(pPump[i].GPIO_PIN_VALUE, GPIO_MODE_OUTPUT);
+        gpio_intr_disable(pPump[i].GPIO_PIN_VALUE);
+        gpio_set_level(pPump[i].GPIO_PIN_VALUE, 0); // Ensure pump is off at start
     }
 
     return ESP_OK;

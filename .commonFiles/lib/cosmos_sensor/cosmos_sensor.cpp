@@ -2,6 +2,7 @@
 #include "esp_adc/adc_cali_scheme.h"
 #include "esp_adc/adc_oneshot.h"
 #include "esp_log.h"
+#include "rom/ets_sys.h"
 
 #include "cosmos_sensor.h"
 
@@ -10,9 +11,8 @@ const static char *TAG = "COSMOS_SENSOR";
 // Handle for cosmos_sensor_begin
 static bool s_sensor_begin_handle = false;
 
-// Handles for ADC channels 1 and 2
+// Handles for ADC channels 1
 static adc_oneshot_unit_handle_t adc1_handle;
-static adc_oneshot_unit_handle_t adc2_handle;
 
 /**
  * @brief Configures and characterize the ADC at
@@ -20,52 +20,69 @@ static adc_oneshot_unit_handle_t adc2_handle;
  *
  * @param pSensor Pointer to the strutct that contains all of the info
  * about the sensors used in the project
- * @param snr_qty Quantity of sensors used in the project
  */
 static void cosmos_sensor_begin(cosmos_sensor_t *pSensor, int snr_qty)
 {
     static bool adc_unit1_ready = false;
-    static bool adc_unit2_ready = false;
+
+    if (adc_unit1_ready == false) {
+        // ADC1 Init
+        adc_oneshot_unit_init_cfg_t init_config1 = {
+            .unit_id = ADC_UNIT_1,
+            .ulp_mode = ADC_ULP_MODE_DISABLE,
+        };
+        ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
+        adc_unit1_ready = true;
+    }
+
     // Oneshot default params
     adc_oneshot_chan_cfg_t config = {
         .atten = ADC_ATTEN_DB_12,
-        .bitwidth = ADC_BITWIDTH_12,
+        .bitwidth = ADC_BITWIDTH_DEFAULT,
     };
+
     // Cycle through all sensors
     for (int snr_idx = 0; snr_idx < snr_qty; snr_idx++) {
 
-        // Check if sensor is connected to ADC1
-        if (pSensor[snr_idx].pin_num >= 32) {
-
-            if (adc_unit1_ready == false) {
-                // ADC1 Init
-                adc_oneshot_unit_init_cfg_t init_config1 = {
-                    .unit_id = ADC_UNIT_1,
-                };
-                ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
-                adc_unit1_ready = true;
-            }
-
-            // ADC1 Config
-            ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, pSensor->snr_chn, &config));
-        } else {
-
-            if (adc_unit2_ready == false) {
-                // ADC2 Init
-                adc_oneshot_unit_init_cfg_t init_config2 = {
-                    .unit_id = ADC_UNIT_2,
-                    .ulp_mode = ADC_ULP_MODE_DISABLE,
-                };
-                ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config2, &adc2_handle));
-                adc_unit2_ready = true;
-            }
-
-            // ADC2 Config
-            ESP_ERROR_CHECK(adc_oneshot_config_channel(adc2_handle, pSensor->snr_chn, &config));
-        }
+        // ADC1 Config
+        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, pSensor[snr_idx].snr_chn, &config));
     }
     ESP_LOGI(TAG, "Init Success");
     s_sensor_begin_handle = true;
+}
+
+/**
+ * @brief Initialize the moving average filter
+ *
+ * @param f Pointer to the filter struct
+ */
+static void cosmos_sensor_moving_avg_init(cosmos_sensor_moving_avg_t *f)
+{
+    f->index = 0;
+    f->count = 0;
+    f->sum = 0;
+    for (int i = 0; i < FILTER_SIZE; i++)
+        f->buffer[i] = 0;
+}
+
+static int cosmos_sensor_moving_avg_update(cosmos_sensor_moving_avg_t *f, int new_value)
+{
+    // Subtract oldest value
+    f->sum -= f->buffer[f->index];
+
+    // Store new value
+    f->buffer[f->index] = new_value;
+    f->sum += new_value;
+
+    // Update index
+    f->index = (f->index + 1) % FILTER_SIZE;
+
+    // Update count until buffer is full
+    if (f->count < FILTER_SIZE)
+        f->count++;
+
+    // Return average
+    return (int)(f->sum / f->count);
 }
 
 /**
@@ -79,17 +96,37 @@ static void cosmos_sensor_begin(cosmos_sensor_t *pSensor, int snr_qty)
  * the analog sensors
  * @return int Multisampled readings from adc1
  */
-static int cosmos_sensor_adc1_multisampling(cosmos_sensor_t *pSensor)
+static int cosmos_sensor_adc_discard(cosmos_sensor_t *pSensor)
 {
-    int adc_reading = 0;
-    // Multisampling
-    for (int i = 0; i < NO_OF_SAMPLES; i++) {
-        adc_oneshot_read(adc1_handle, pSensor->snr_chn, &pSensor->reading);
-        adc_reading += pSensor->reading;
-    }
-    adc_reading /= NO_OF_SAMPLES;
+    int v;
+    int min = INT32_MAX, max = INT32_MIN;
+    long sum = 0;
 
-    return adc_reading;
+    for (int i = 0; i < NO_OF_SAMPLES; i++) {
+        ets_delay_us(20); // ADC sampling time
+
+        adc_oneshot_read(adc1_handle, pSensor->snr_chn, &v);
+        if (v < min)
+            min = v;
+        if (v > max)
+            max = v;
+        sum += v;
+    }
+
+    // if NO_OF_SAMPLES < 3 just return average (safe path)
+    if (NO_OF_SAMPLES <= 2)
+        return (int)(sum / NO_OF_SAMPLES);
+
+    // discard min and max
+    sum -= min;
+    sum -= max;
+    return (int)(sum / (NO_OF_SAMPLES - 2));
+}
+
+int cosmos_sensor_adc_filtered(cosmos_sensor_t *pSensor, cosmos_sensor_moving_avg_t *pFilter)
+{
+    int sample = cosmos_sensor_adc_discard(pSensor);
+    return cosmos_sensor_moving_avg_update(pFilter, sample);
 }
 
 /**
@@ -113,7 +150,7 @@ static void cosmos_sensor_adc_cali_init(adc_unit_t unit, adc_channel_t channel, 
             .unit_id = unit,
             .chan = channel,
             .atten = ADC_ATTEN_DB_12,
-            .bitwidth = ADC_BITWIDTH_12,
+            .bitwidth = ADC_BITWIDTH_DEFAULT,
         };
         ret_msg = adc_cali_create_scheme_curve_fitting(&cali_config, &handle);
         if (ret_msg == ESP_OK) {
@@ -128,7 +165,7 @@ static void cosmos_sensor_adc_cali_init(adc_unit_t unit, adc_channel_t channel, 
         adc_cali_line_fitting_config_t cali_config = {
             .unit_id = unit,
             .atten = ADC_ATTEN_DB_12,
-            .bitwidth = ADC_BITWIDTH_12,
+            .bitwidth = ADC_BITWIDTH_DEFAULT,
             .default_vref = DEFAULT_VREF,
         };
         ret_msg = adc_cali_create_scheme_line_fitting(&cali_config, &handle);
@@ -148,43 +185,33 @@ static void cosmos_sensor_adc_cali_init(adc_unit_t unit, adc_channel_t channel, 
     }
 }
 
-void cosmos_sensor_adc_read_raw(cosmos_sensor_t *pSensor, int snr_qty)
+void cosmos_sensor_adc_read_voltage(cosmos_sensor_t *pSensor, int snr_qty)
 {
+
     // Check if sensor controller is configured
     if (s_sensor_begin_handle == false)
         cosmos_sensor_begin(pSensor, snr_qty);
 
+    // Create moving average filters for each sensor
+    cosmos_sensor_moving_avg_t filter[snr_qty];
+    for (int i = 0; i < snr_qty; i++)
+        cosmos_sensor_moving_avg_init(&filter[i]);
+
     // Cycle through all sensors
     for (int snr_idx = 0; snr_idx < snr_qty; snr_idx++) {
 
-        // Check if sensor is connected to ADC1
-        if (pSensor[snr_idx].pin_num >= 32) {
+        // Check sensor calibration
+        if (pSensor[snr_idx].cali_flag == false) {
 
-            // Check sensor calibration
-            if (pSensor[snr_idx].cali_flag == false) {
+            // Sensor calibration
+            cosmos_sensor_adc_cali_init(ADC_UNIT_1, pSensor[snr_idx].snr_chn, &pSensor[snr_idx].snr_handle, &pSensor[snr_idx].cali_flag);
 
-                // Sensor calibration
-                cosmos_sensor_adc_cali_init(ADC_UNIT_1, pSensor[snr_idx].snr_chn, &pSensor[snr_idx].snr_handle, &pSensor[snr_idx].cali_flag);
-            } else {
-
-                // Start readings
-                int adc_reading = cosmos_sensor_adc1_multisampling(&pSensor[snr_idx]);
-
-                // Convert ADC reading to calibrated voltage
-                adc_cali_raw_to_voltage(pSensor[snr_idx].snr_handle, adc_reading, &pSensor[snr_idx].reading);
-            }
         } else {
+            // Start readings
+            int adc_reading = cosmos_sensor_adc_filtered(&pSensor[snr_idx], &filter[snr_idx]);
 
-            // Check sensor calibration
-            if (pSensor[snr_idx].cali_flag == false) {
-
-                // Sensor calibration
-                cosmos_sensor_adc_cali_init(ADC_UNIT_2, pSensor[snr_idx].snr_chn, &pSensor[snr_idx].snr_handle, &pSensor[snr_idx].cali_flag);
-            } else {
-
-                // Get calibrated readings
-                adc_oneshot_get_calibrated_result(adc2_handle, pSensor[snr_idx].snr_handle, pSensor[snr_idx].snr_chn, &pSensor[snr_idx].reading);
-            }
+            // Convert ADC reading to calibrated voltage
+            adc_cali_raw_to_voltage(pSensor[snr_idx].snr_handle, adc_reading, &pSensor[snr_idx].reading);
         }
     }
 }

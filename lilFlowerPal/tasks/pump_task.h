@@ -21,7 +21,7 @@
 typedef void *pump_task_handle_t;
 
 typedef struct {
-    const int GPIO_PIN_VALUE; /*<! GPIO pin associated with the pump */
+    gpio_num_t GPIO_PIN_VALUE; /*<! GPIO pin associated with the pump */
 } gpio_pump_t;
 
 /**
@@ -30,7 +30,7 @@ typedef struct {
  */
 typedef struct {
     uint16_t endpoint_id; /*!< Endpoint ID associated with the pump */
-    int gpio;             /*!< GPIO pin associated with the pump */
+    gpio_num_t gpio;      /*!< GPIO pin associated with the pump */
 } pump_task_config_t;
 
 /**

@@ -47,17 +47,27 @@ static void analog_sensor_task_read_cb(void *pArg)
         return;
     }
 
-    cosmos_sensor_adc_read_raw(ctx->sn_param, SNR_QTY);
+    cosmos_sensor_adc_read_voltage(ctx->sn_param, SNR_QTY);
 
     for (size_t i = 0; i < SNR_QTY; i++) {
 
         switch (ctx->sn_param[i].snr_type) {
         case SNR_TYPE_WL:
             current_reading = ctx->sn_param[i].reading;
+            ESP_LOGI(TAG, "Water level sensor endpoint %d (Pin %d) voltage: %f\n", ctx->config[i].endpoint_id, ctx->sn_param[i].pin_num, current_reading);
             break;
 
         case SNR_TYPE_SM:
             current_reading = COSMOS_MAP(ctx->sn_param[i].reading, 3000, 1500, 0, 100);
+
+            /*
+            As the soil gets wetter, the output value decreases, and as it gets drier,
+            the output value increases. When powered at 5V, the output ranges from
+            about 1.5V (for wet soil) to 3V (for dry soil).
+
+            Source: https://lastminuteengineers.com/capacitive-soil-moisture-sensor-arduino/
+            */
+            ESP_LOGI(TAG, "Moisture sensor endpoint %d (Pin %d) voltage: %d\n", ctx->config[i].endpoint_id, ctx->sn_param[i].pin_num, ctx->sn_param[i].reading);
             break;
 
         default:
@@ -66,17 +76,8 @@ static void analog_sensor_task_read_cb(void *pArg)
         }
 
         if (ctx->config[i].cb) {
-            ctx->config[i].cb(ctx->config[i].endpoint_id, current_reading, ctx->config[i].user_data);
+            ctx->config[i].cb(ctx->config[i].endpoint_id, ctx->sn_param[i].reading, ctx->config[i].user_data);
         }
-
-        /*
-        As the soil gets wetter, the output value decreases, and as it gets drier,
-        the output value increases. When powered at 5V, the output ranges from
-        about 1.5V (for wet soil) to 3V (for dry soil).
-
-        Source: https://lastminuteengineers.com/capacitive-soil-moisture-sensor-arduino/
-        */
-        ESP_LOGI(TAG, "Moisture sensor endpoint %d: %d\n", ctx->config[i].endpoint_id, ctx->sn_param[i].reading);
     }
 }
 

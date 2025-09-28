@@ -145,11 +145,11 @@ extern "C" void app_main()
             },
     };
 
-    // Create soil moisture sensor endpoints
-    app_create_sm_sensor(sensors_config, node);
-
     // Create pump endpoints endpoints
     app_create_pump(pump_gpios, node);
+
+    // Create soil moisture sensor endpoints
+    app_create_sm_sensor(sensors_config, node);
 
 #if CHIP_DEVICE_CONFIG_ENABLE_THREAD
     /* Set OpenThread platform config */
@@ -175,17 +175,17 @@ extern "C" void app_main()
         return;
     }
 
-    // Initialize analog sensor task
-    err = analog_sensor_task_sensor_init(sensors_config, sensors);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "analog_sensor_task_sensor_init failed: %d", err);
-        return;
-    }
-
     // Initialize pump task
     err = pump_task_init(pump_gpios);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "pump_task_init failed: %d", err);
+        return;
+    }
+
+    // Initialize analog sensor task
+    err = analog_sensor_task_sensor_init(sensors_config, sensors);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "analog_sensor_task_sensor_init failed: %d", err);
         return;
     }
 
@@ -238,7 +238,7 @@ static esp_err_t app_create_pump(gpio_pump_t *pPump, node_t *pNode)
             ESP_LOGE(TAG, "Failed to initialize pump");
         }
 
-        pumps_config[i].gpio = pPump->GPIO_PIN_VALUE;
+        pumps_config[i].gpio = pPump[i].GPIO_PIN_VALUE;
         pumps_config[i].endpoint_id = endpoint::get_id(endpoint);
 
         // Get Endpoints Id
