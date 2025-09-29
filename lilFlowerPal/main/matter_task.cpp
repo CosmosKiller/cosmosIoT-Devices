@@ -1,6 +1,6 @@
 /**
  * @file matter_task.cpp
- * @author your name (you@domain.com)
+ * @author Marcel Nahir Samur (mnsamur2014@gmail.com)
  * @brief
  * @version 0.1
  * @date 2025-09-15
