@@ -12,4 +12,4 @@
 
 * sensor_simulator -> Flash to another ESP32 in order to use the integrated DAC as soil moisture/water level sensor. 🟡
 * encoder_sample -> Use it to check for proper operation of the rotary encoder and it's built-in button. 🟢
-* lcd_driver -> For testing the LCD screen using LVGL as the graphics library. 🔴
+* esp32_lvgl -> For testing the LCD screen. 🟢

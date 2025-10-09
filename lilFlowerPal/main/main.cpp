@@ -218,7 +218,7 @@ static esp_err_t app_create_pump(gpio_pump_t *pPump, node_t *pNode)
     }
 
     if (!pPump) {
-        ESP_LOGE(TAG, "Plug cannot be NULL");
+        ESP_LOGE(TAG, "Pump cannot be NULL");
         return ESP_ERR_INVALID_ARG;
     }
 

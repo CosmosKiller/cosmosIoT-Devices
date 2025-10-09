@@ -1,5 +1,5 @@
 /**
- * @file bme680_task.c
+ * @file bme680_task.cpp
  * @author Marcel Nahir Samur (mnsamur2014@gmail.com)
  * @brief
  * @version 0.1
