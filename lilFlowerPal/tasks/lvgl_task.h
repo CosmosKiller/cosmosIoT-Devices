@@ -4,6 +4,8 @@
 #include <driver/gpio.h>
 #include <driver/spi_master.h>
 
+#include <main_tasks_common.h>
+
 // LCD pin definition
 #define LCD_PIN_MOSI 23
 #define LCD_PIN_CLK  18
@@ -20,6 +22,12 @@
 #define LCD_BITS_PER_PIXEL 16
 #define LCD_H_RES          240
 #define LCD_V_RES          240
+
+/**
+ * @brief Notify LVGL task that device is commissioned
+ *
+ */
+void lvgl_task_device_commissioned(void);
 
 /**
  * @brief Init LCD HW, LVGL and sets main screen

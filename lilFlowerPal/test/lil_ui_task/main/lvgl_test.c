@@ -24,9 +24,9 @@
 #include <esp_lcd_panel_ops.h>
 #include <esp_lcd_panel_vendor.h>
 
-#include <lvgl_task.h>
+#include <lvgl_test.h>
 
-static const char *TAG = "lvgl_task";
+static const char *TAG = "lvgl_test";
 
 static esp_lcd_panel_io_handle_t lcd_io = NULL;
 static esp_lcd_panel_handle_t lcd_panel = NULL;

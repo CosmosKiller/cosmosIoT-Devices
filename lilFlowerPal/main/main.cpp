@@ -29,6 +29,8 @@
 // Include project libraries
 #include <analog_sensor_task.h>
 #include <bme680_task.h>
+#include <lil_ui_task.h>
+#include <lvgl_task.h>
 #include <main_tasks_common.h>
 #include <matter_task.h>
 #include <pump_task.h>
@@ -161,12 +163,18 @@ extern "C" void app_main()
     set_openthread_platform_config(&config);
 #endif
 
+    // Initialize LVGL task loads main screen
+    // lvgl_task_start();
+
     // Start Matter stack (this starts transports, commissioning, etc.)
     err = esp_matter::start(app_event_cb);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "esp_matter::start failed: %d", err);
         return;
     }
+
+    // Start Lil UI task
+    lil_ui_task_start();
 
     // Initialize BME680 sensor task
     err = bme680_task_sensor_init(&bme680_sensor_config);

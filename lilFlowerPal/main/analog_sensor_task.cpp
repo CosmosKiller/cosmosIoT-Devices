@@ -11,10 +11,7 @@
 
 #include <esp_err.h>
 #include <esp_log.h>
-#include <esp_random.h>
 #include <esp_timer.h>
-
-#include <lib/support/CodeUtils.h>
 
 #include <analog_sensor_task.h>
 

@@ -4,10 +4,10 @@
 
 #include <lvgl.h>
 
-#include <encoder_task.h>
-#include <lvgl_task.h>
+#include <encoder_test.h>
+#include <lvgl_test.h>
 
-static const char *TAG = "lil_ui_task";
+static const char *TAG = "lil_ui_test";
 
 lv_obj_t *screens[4];
 static int current_screen = 0;

@@ -28,10 +28,15 @@
 
 static const char *TAG = "lvgl_task";
 
+// LVGL image declare
+LV_IMG_DECLARE(test_qr);
+
+static bool is_commissioned = false;
+
 static esp_lcd_panel_io_handle_t lcd_io = NULL;
 static esp_lcd_panel_handle_t lcd_panel = NULL;
 
-extern lv_obj_t *screens[4];
+extern lv_obj_t *screens[LIL_UI_TASK_SCREEN_COUNT + 1];
 static lv_display_t *lvgl_disp = NULL;
 
 /**
@@ -46,9 +51,9 @@ static esp_err_t lvgl_task_lcd_init(void)
     // SPI bus init
     ESP_LOGD(TAG, "Initialize SPI bus");
     const spi_bus_config_t buscfg = {
-        .sclk_io_num = LCD_PIN_CLK,
         .mosi_io_num = LCD_PIN_MOSI,
         .miso_io_num = LCD_PIN_ND,
+        .sclk_io_num = LCD_PIN_CLK,
         .quadwp_io_num = LCD_PIN_ND,
         .quadhd_io_num = LCD_PIN_ND,
         .max_transfer_sz = LCD_H_RES * 80 * sizeof(uint16_t),
@@ -58,13 +63,13 @@ static esp_err_t lvgl_task_lcd_init(void)
     // LCD IO config
     ESP_LOGD(TAG, "Install panel IO");
     const esp_lcd_panel_io_spi_config_t io_config = {
-        .dc_gpio_num = LCD_PIN_DC,
         .cs_gpio_num = LCD_PIN_ND,
+        .dc_gpio_num = LCD_PIN_DC,
+        .spi_mode = LCD_SPI_MODE,
         .pclk_hz = LCD_PIXEL_CLK_HZ,
+        .trans_queue_depth = 10,
         .lcd_cmd_bits = LCD_CMD_BITS,
         .lcd_param_bits = LCD_PARAM_BITS,
-        .spi_mode = LCD_SPI_MODE,
-        .trans_queue_depth = 10,
     };
     ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)LCD_HOST, &io_config, &lcd_io));
 
@@ -109,14 +114,14 @@ static esp_err_t lvgl_task_lvgl_init(void)
         .hres = LCD_H_RES,
         .vres = LCD_V_RES,
         .monochrome = false,
-#if LVGL_VERSION_MAJOR >= 9
-        .color_format = LV_COLOR_FORMAT_RGB565,
-#endif
         .rotation = {
             .swap_xy = false,
             .mirror_x = true,
             .mirror_y = true,
         },
+#if LVGL_VERSION_MAJOR >= 9
+        .color_format = LV_COLOR_FORMAT_RGB565,
+#endif
         .flags = {
             .buff_dma = true,
 #if LVGL_VERSION_MAJOR >= 9
@@ -129,43 +134,65 @@ static esp_err_t lvgl_task_lvgl_init(void)
     return ESP_OK;
 }
 
+void lvgl_task_device_commissioned(void)
+{
+    is_commissioned = true;
+
+    // Switch to the main screen (screen 1) from QR code screen
+    lvgl_port_lock(0);
+    if (screens[1] != NULL) {
+        lv_scr_load_anim(screens[1], LV_SCR_LOAD_ANIM_FADE_ON, 500, 0, false);
+    }
+    lvgl_port_unlock();
+}
+
 static void lvgl_task_main_display(void)
 {
     // Task lock
     lvgl_port_lock(0);
 
-    // TODO: LVGL objects code here
-
     // Screen 1
     screens[0] = lv_obj_create(NULL);
     lv_obj_t *label1 = lv_label_create(screens[0]);
-    lv_label_set_text(label1, "#ff00eaff"
-                              "Screen 1");
+    lv_label_set_text(label1, "#c300ffff " LV_SYMBOL_BELL " Screen 1 " LV_SYMBOL_BELL " #\n #ffffffff -> To Screen 2 #");
     lv_obj_center(label1);
 
     // Screen 2
     screens[1] = lv_obj_create(NULL);
     lv_obj_t *label2 = lv_label_create(screens[1]);
-    lv_label_set_text(label2, "#003cffff"
-                              "Screen 2");
+    lv_label_set_text(label2, "#003cffff " LV_SYMBOL_BELL " Screen 2 " LV_SYMBOL_BELL " #\n #ffffffff -> To Screen 3 #");
     lv_obj_center(label2);
 
     // Screen 3
     screens[2] = lv_obj_create(NULL);
     lv_obj_t *label3 = lv_label_create(screens[2]);
-    lv_label_set_text(label3, "#7bff00ff"
-                              "Screen 3");
+    lv_label_set_text(label3, "#7bff00ff " LV_SYMBOL_BELL " Screen 3 " LV_SYMBOL_BELL " #\n #ffffffff -> To Screen 4 #");
     lv_obj_center(label3);
 
     // Screen 4
     screens[3] = lv_obj_create(NULL);
     lv_obj_t *label4 = lv_label_create(screens[3]);
-    lv_label_set_text(label4, "#FF0000"
-                              "Screen 4");
+    lv_label_set_text(label4, "#FF0000 " LV_SYMBOL_BELL " Screen 4 " LV_SYMBOL_BELL " #\n #ffffffff -> Back to Screen 1 #");
     lv_obj_center(label4);
 
-    // Load first screen
-    lv_scr_load(screens[0]);
+    // Screen 5 - QR Code (Only shown during commissioning)
+    screens[4] = lv_obj_create(NULL);
+
+    // Create QR code object
+    lv_obj_t *qr_img = lv_img_create(screens[4]);
+    lv_img_set_src(qr_img, &test_qr);
+
+    // Add a label with instructions
+    lv_obj_t *label = lv_label_create(screens[4]);
+    lv_label_set_text(label, "Scan to commission device");
+    lv_obj_align(label, LV_ALIGN_BOTTOM_MID, 0, -20);
+
+    // Load appropriate starting screen
+    if (is_commissioned) {
+        lv_scr_load(screens[0]); // Load main screen if already commissioned
+    } else {
+        lv_scr_load(screens[4]); // Load QR code screen if not commissioned
+    }
 
     // Task unlock
     lvgl_port_unlock();
@@ -173,9 +200,9 @@ static void lvgl_task_main_display(void)
 
 void lvgl_task_start(void)
 {
-    ESP_ERROR_CHECK(app_lcd_init());
+    ESP_ERROR_CHECK(lvgl_task_lcd_init());
 
-    ESP_ERROR_CHECK(app_lvgl_init());
+    ESP_ERROR_CHECK(lvgl_task_lvgl_init());
 
     lvgl_task_main_display();
 }

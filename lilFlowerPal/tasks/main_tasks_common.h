@@ -21,4 +21,10 @@
 #define PUMP_TASK_PRIORITY   4
 #define PUMP_TASK_CORE_ID    1
 
+// Lil UI task
+#define LIL_UI_TASK_STACK_SIZE   2048
+#define LIL_UI_TASK_PRIORITY     5
+#define LIL_UI_TASK_CORE_ID      -1
+#define LIL_UI_TASK_SCREEN_COUNT 4
+
 #endif /* MAIN_TASKS_COMMON_H_ */

@@ -1,9 +1,13 @@
-.pio
-.vscode
+# Files 
 *.code-workspace
 sdkconfig
 sdkconfig.*
 toDoList.md
+dependencies.lock
+
+# Build directories
+.vscode
+mfg_tool_scripts
+out
 build
 managed_components
-dependencies.lock

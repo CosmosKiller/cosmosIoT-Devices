@@ -9,11 +9,11 @@
  *
  */
 
-#include <encoder_task.h>
+#include <encoder_test.h>
 #include <esp_attr.h>
 #include <esp_log.h>
 
-static const char *TAG = "encoder_task";
+static const char *TAG = "encoder_test";
 
 esp_err_t encoder_init(encoder_config_t *encoder)
 {
