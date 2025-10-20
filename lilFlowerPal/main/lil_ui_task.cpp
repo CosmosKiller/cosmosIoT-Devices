@@ -16,7 +16,7 @@
 
 static const char *TAG = "lil_ui_task";
 
-static lv_obj_t *screens[LIL_UI_TASK_SCREEN_COUNT] = {0};
+lv_obj_t *screens[LIL_UI_TASK_SCREEN_COUNT] = {0};
 static int current_screen = 0;
 
 // Encoder configuration

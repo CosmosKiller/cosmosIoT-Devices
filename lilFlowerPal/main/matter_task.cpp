@@ -9,7 +9,10 @@
  *
  */
 
+#if CONFIG_ENABLE_LVGL_UI
 #include <lvgl_task.h>
+#endif
+
 #include <matter_task.h>
 #include <pump_task.h>
 
@@ -30,7 +33,9 @@ void app_event_cb(const ChipDeviceEvent *event, intptr_t arg)
         break;
 
     case chip::DeviceLayer::DeviceEventType::kCommissioningComplete:
+#if CONFIG_ENABLE_LVGL_UI
         lvgl_task_device_commissioned();
+#endif
         ESP_LOGI(TAG, "Commissioning complete");
         break;
 

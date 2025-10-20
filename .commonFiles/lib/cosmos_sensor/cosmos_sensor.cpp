@@ -6,50 +6,13 @@
 
 #include "cosmos_sensor.h"
 
-const static char *TAG = "COSMOS_SENSOR";
+const static char *TAG = "cosmos_sensor";
 
 // Handle for cosmos_sensor_begin
 static bool s_sensor_begin_handle = false;
 
 // Handles for ADC channels 1
 static adc_oneshot_unit_handle_t adc1_handle;
-
-/**
- * @brief Configures and characterize the ADC at
- * 12db attenuation and a bandwidth of 12bits.
- *
- * @param pSensor Pointer to the strutct that contains all of the info
- * about the sensors used in the project
- */
-static void cosmos_sensor_begin(cosmos_sensor_t *pSensor, int snr_qty)
-{
-    static bool adc_unit1_ready = false;
-
-    if (adc_unit1_ready == false) {
-        // ADC1 Init
-        adc_oneshot_unit_init_cfg_t init_config1 = {
-            .unit_id = ADC_UNIT_1,
-            .ulp_mode = ADC_ULP_MODE_DISABLE,
-        };
-        ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
-        adc_unit1_ready = true;
-    }
-
-    // Oneshot default params
-    adc_oneshot_chan_cfg_t config = {
-        .atten = ADC_ATTEN_DB_12,
-        .bitwidth = ADC_BITWIDTH_DEFAULT,
-    };
-
-    // Cycle through all sensors
-    for (int snr_idx = 0; snr_idx < snr_qty; snr_idx++) {
-
-        // ADC1 Config
-        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, pSensor[snr_idx].snr_chn, &config));
-    }
-    ESP_LOGI(TAG, "Init Success");
-    s_sensor_begin_handle = true;
-}
 
 /**
  * @brief Initialize the moving average filter
@@ -183,6 +146,36 @@ static void cosmos_sensor_adc_cali_init(adc_unit_t unit, adc_channel_t channel, 
     } else {
         ESP_LOGE(TAG, "Invalid arg or no memory");
     }
+}
+
+void cosmos_sensor_begin(cosmos_sensor_t *pSensor, int snr_qty)
+{
+    static bool adc_unit1_ready = false;
+
+    if (adc_unit1_ready == false) {
+        // ADC1 Init
+        adc_oneshot_unit_init_cfg_t init_config1 = {
+            .unit_id = ADC_UNIT_1,
+            .ulp_mode = ADC_ULP_MODE_DISABLE,
+        };
+        ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
+        adc_unit1_ready = true;
+    }
+
+    // Oneshot default params
+    adc_oneshot_chan_cfg_t config = {
+        .atten = ADC_ATTEN_DB_12,
+        .bitwidth = ADC_BITWIDTH_DEFAULT,
+    };
+
+    // Cycle through all sensors
+    for (int snr_idx = 0; snr_idx < snr_qty; snr_idx++) {
+
+        // ADC1 Config
+        ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, pSensor[snr_idx].snr_chn, &config));
+    }
+    ESP_LOGI(TAG, "Init Success");
+    s_sensor_begin_handle = true;
 }
 
 void cosmos_sensor_adc_read_voltage(cosmos_sensor_t *pSensor, int snr_qty)

@@ -29,11 +29,14 @@
 // Include project libraries
 #include <analog_sensor_task.h>
 #include <bme680_task.h>
-#include <lil_ui_task.h>
-#include <lvgl_task.h>
 #include <main_tasks_common.h>
 #include <matter_task.h>
 #include <pump_task.h>
+
+#if CONFIG_ENABLE_LVGL_UI
+#include <lil_ui_task.h>
+#include <lvgl_task.h>
+#endif
 
 static const char *TAG = "app_main";
 
@@ -163,19 +166,6 @@ extern "C" void app_main()
     set_openthread_platform_config(&config);
 #endif
 
-    // Initialize LVGL task loads main screen
-    // lvgl_task_start();
-
-    // Start Matter stack (this starts transports, commissioning, etc.)
-    err = esp_matter::start(app_event_cb);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "esp_matter::start failed: %d", err);
-        return;
-    }
-
-    // Start Lil UI task
-    lil_ui_task_start();
-
     // Initialize BME680 sensor task
     err = bme680_task_sensor_init(&bme680_sensor_config);
     if (err != ESP_OK) {
@@ -190,12 +180,32 @@ extern "C" void app_main()
         return;
     }
 
+    // Initialize ADC channels for analog sensors
+    cosmos_sensor_begin(sensors, SNR_QTY);
+
     // Initialize analog sensor task
     err = analog_sensor_task_sensor_init(sensors_config, sensors);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "analog_sensor_task_sensor_init failed: %d", err);
         return;
     }
+
+// Initialize LVGL task loads main screen
+#if CONFIG_ENABLE_LVGL_UI
+    lvgl_task_start();
+#endif
+
+    // Start Matter stack (this starts transports, commissioning, etc.)
+    err = esp_matter::start(app_event_cb);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "esp_matter::start failed: %d", err);
+        return;
+    }
+
+// Start Lil UI task
+#if CONFIG_ENABLE_LVGL_UI
+    lil_ui_task_start();
+#endif
 
 #if CONFIG_ENABLE_ENCRYPTED_OTA
     err = esp_matter_ota_requestor_encrypted_init(s_decryption_key, s_decryption_key_len);

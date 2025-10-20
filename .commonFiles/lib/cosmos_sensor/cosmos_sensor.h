@@ -50,6 +50,15 @@ typedef struct {
  * @brief Configures and characterize the ADC at
  * 12db attenuation and a bandwidth of 12bits.
  *
+ * @param pSensor Pointer to the strutct that contains all of the info
+ * about the sensors used in the project
+ */
+void cosmos_sensor_begin(cosmos_sensor_t *pSensor, int snr_qty);
+
+/**
+ * @brief Configures and characterize the ADC at
+ * 12db attenuation and a bandwidth of 12bits.
+ *
  * It also takes multisampled reading from ADC1.
  *
  * @param pSensor Pointer to the struct which contains the sensor's

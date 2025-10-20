@@ -30,7 +30,6 @@ static const char *TAG = "lvgl_task";
 
 // LVGL image declare
 LV_IMG_DECLARE(test_qr);
-
 static bool is_commissioned = false;
 
 static esp_lcd_panel_io_handle_t lcd_io = NULL;
@@ -88,7 +87,7 @@ static esp_err_t lvgl_task_lcd_init(void)
     esp_lcd_panel_set_gap(lcd_panel, 0, 80);
     esp_lcd_panel_mirror(lcd_panel, false, false);
     esp_lcd_panel_disp_on_off(lcd_panel, true);
-    esp_lcd_panel_invert_color(lcd_panel, false);
+    esp_lcd_panel_invert_color(lcd_panel, true);
 
     return ret;
 }
@@ -101,7 +100,14 @@ static esp_err_t lvgl_task_lcd_init(void)
 static esp_err_t lvgl_task_lvgl_init(void)
 {
     // LVGL init
-    const lvgl_port_cfg_t lvgl_cfg = ESP_LVGL_PORT_INIT_CONFIG();
+    const lvgl_port_cfg_t lvgl_cfg = {
+        .task_priority = 4,
+        .task_stack = 2048,
+        .task_affinity = -1,
+        .task_max_sleep_ms = 500,
+        .task_stack_caps = MALLOC_CAP_INTERNAL | MALLOC_CAP_DEFAULT,
+        .timer_period_ms = 5,
+    };
     ESP_ERROR_CHECK(lvgl_port_init(&lvgl_cfg));
 
     // Add ST7789 LCD screen
@@ -109,8 +115,8 @@ static esp_err_t lvgl_task_lvgl_init(void)
     const lvgl_port_display_cfg_t disp_cfg = {
         .io_handle = lcd_io,
         .panel_handle = lcd_panel,
-        .buffer_size = LCD_H_RES * 40,
-        .double_buffer = 1,
+        .buffer_size = LCD_H_RES * 20,
+        .double_buffer = 0,
         .hres = LCD_H_RES,
         .vres = LCD_V_RES,
         .monochrome = false,
@@ -119,31 +125,13 @@ static esp_err_t lvgl_task_lvgl_init(void)
             .mirror_x = true,
             .mirror_y = true,
         },
-#if LVGL_VERSION_MAJOR >= 9
-        .color_format = LV_COLOR_FORMAT_RGB565,
-#endif
         .flags = {
             .buff_dma = true,
-#if LVGL_VERSION_MAJOR >= 9
-            .swap_bytes = true,
-#endif
         },
     };
     lvgl_disp = lvgl_port_add_disp(&disp_cfg);
 
     return ESP_OK;
-}
-
-void lvgl_task_device_commissioned(void)
-{
-    is_commissioned = true;
-
-    // Switch to the main screen (screen 1) from QR code screen
-    lvgl_port_lock(0);
-    if (screens[1] != NULL) {
-        lv_scr_load_anim(screens[1], LV_SCR_LOAD_ANIM_FADE_ON, 500, 0, false);
-    }
-    lvgl_port_unlock();
 }
 
 static void lvgl_task_main_display(void)
@@ -154,25 +142,29 @@ static void lvgl_task_main_display(void)
     // Screen 1
     screens[0] = lv_obj_create(NULL);
     lv_obj_t *label1 = lv_label_create(screens[0]);
-    lv_label_set_text(label1, "#c300ffff " LV_SYMBOL_BELL " Screen 1 " LV_SYMBOL_BELL " #\n #ffffffff -> To Screen 2 #");
+    lv_label_set_text(label1, "" LV_SYMBOL_BELL " Hola... " LV_SYMBOL_BELL "\n -> To Screen 2");
+    lv_obj_set_style_text_color(label1, lv_color_hex(0x00FF00), 0);
     lv_obj_center(label1);
 
     // Screen 2
     screens[1] = lv_obj_create(NULL);
     lv_obj_t *label2 = lv_label_create(screens[1]);
-    lv_label_set_text(label2, "#003cffff " LV_SYMBOL_BELL " Screen 2 " LV_SYMBOL_BELL " #\n #ffffffff -> To Screen 3 #");
+    lv_label_set_text(label2, "" LV_SYMBOL_BELL " Melsita... " LV_SYMBOL_BELL "\n -> To Screen 3");
+    lv_obj_set_style_text_color(label2, lv_color_hex(0x0000FF), 0);
     lv_obj_center(label2);
 
     // Screen 3
     screens[2] = lv_obj_create(NULL);
     lv_obj_t *label3 = lv_label_create(screens[2]);
-    lv_label_set_text(label3, "#7bff00ff " LV_SYMBOL_BELL " Screen 3 " LV_SYMBOL_BELL " #\n #ffffffff -> To Screen 4 #");
+    lv_label_set_text(label3, "" LV_SYMBOL_BELL " te... " LV_SYMBOL_BELL "\n -> To Screen 4");
+    lv_obj_set_style_text_color(label3, lv_color_hex(0xFF0000), 0);
     lv_obj_center(label3);
 
     // Screen 4
     screens[3] = lv_obj_create(NULL);
     lv_obj_t *label4 = lv_label_create(screens[3]);
-    lv_label_set_text(label4, "#FF0000 " LV_SYMBOL_BELL " Screen 4 " LV_SYMBOL_BELL " #\n #ffffffff -> Back to Screen 1 #");
+    lv_label_set_text(label4, "" LV_SYMBOL_BELL " amo! <3 " LV_SYMBOL_BELL " \n -> Back to Screen 1");
+    lv_obj_set_style_text_color(label4, lv_color_hex(0x000000), 0);
     lv_obj_center(label4);
 
     // Screen 5 - QR Code (Only shown during commissioning)
@@ -184,7 +176,7 @@ static void lvgl_task_main_display(void)
 
     // Add a label with instructions
     lv_obj_t *label = lv_label_create(screens[4]);
-    lv_label_set_text(label, "Scan to commission device");
+    lv_label_set_text(label, "Escanee el codigo QR\npara configurar el dispositivo");
     lv_obj_align(label, LV_ALIGN_BOTTOM_MID, 0, -20);
 
     // Load appropriate starting screen
@@ -195,6 +187,18 @@ static void lvgl_task_main_display(void)
     }
 
     // Task unlock
+    lvgl_port_unlock();
+}
+
+void lvgl_task_device_commissioned(void)
+{
+    is_commissioned = true;
+
+    // Switch to the main screen (screen 1) from QR code screen
+    lvgl_port_lock(0);
+    if (screens[0] != NULL) {
+        lv_scr_load_anim(screens[0], LV_SCR_LOAD_ANIM_FADE_ON, 500, 0, false);
+    }
     lvgl_port_unlock();
 }
 

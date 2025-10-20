@@ -26,5 +26,6 @@
 #define LIL_UI_TASK_PRIORITY     5
 #define LIL_UI_TASK_CORE_ID      -1
 #define LIL_UI_TASK_SCREEN_COUNT 4
+#define CONFIG_ENABLE_LVGL_UI    0
 
 #endif /* MAIN_TASKS_COMMON_H_ */
