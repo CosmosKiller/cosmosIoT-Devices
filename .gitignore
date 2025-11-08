@@ -1,10 +1,7 @@
 # Files 
 *.code-workspace
-sdkconfig
-sdkconfig.*
 toDoList.md
 dependencies.lock
-Kconfig.projbuild
 
 # Build directories
 .vscode
