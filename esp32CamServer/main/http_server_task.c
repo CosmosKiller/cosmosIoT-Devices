@@ -11,7 +11,6 @@ httpd_handle_t start_webserver(httpd_handle_t server)
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
 
-    server = NULL;
     if (httpd_start(&server, &config) == ESP_OK) {
         httpd_uri_t stream_uri = {
             .uri = "/stream",
@@ -20,8 +19,6 @@ httpd_handle_t start_webserver(httpd_handle_t server)
             .user_ctx = NULL};
         httpd_register_uri_handler(server, &stream_uri);
     }
-    ESP_LOGI(TAG, "HTTP server started");
-
     return server;
 }
 
@@ -30,5 +27,4 @@ void stop_webserver(httpd_handle_t server)
     if (server) {
         httpd_stop(server);
     }
-    ESP_LOGI(TAG, "HTTP server stopped");
 }

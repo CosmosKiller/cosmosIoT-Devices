@@ -1,0 +1,35 @@
+#ifndef PIR_SENSOR_H
+#define PIR_SENSOR_H
+
+#include <driver/gpio.h>
+#include <esp_err.h>
+
+#define PIR_PIN          GPIO_NUM_16
+#define LED_PIN          GPIO_NUM_4
+#define DEBOUNCE_TIME_MS 200
+#define TRIGGER_TIME_MS  5000
+
+using pir_sensor_cb_t = void (*)(uint16_t endpoint_id, bool occupied, void *user_data);
+
+typedef struct {
+    // This callback functon will be called periodically to report the temperature.
+    pir_sensor_cb_t cb = NULL;
+    // endpoint_id associated with temperature sensor
+    uint16_t endpoint_id;
+    // user data
+    void *user_data = NULL;
+} pir_sensor_config_t;
+
+/**
+ * @brief Initialize sensor driver. This function should be called only once
+ *
+ * @param config sensor configurations. This should last for the lifetime of the driver
+ *               as driver layer do not make a copy of this object.
+ *
+ * @return esp_err_t - ESP_OK on success,
+ *                     ESP_ERR_INVALID_ARG if config is NULL
+ *                     ESP_ERR_INVALID_STATE if driver is already initialized
+ *                     appropriate error code otherwise
+ */
+esp_err_t pir_sensor_init(pir_sensor_config_t *config);
+#endif // PIR_SENSOR_H
