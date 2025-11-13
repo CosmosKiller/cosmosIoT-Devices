@@ -12,9 +12,6 @@
 // Include ESP-IDF libraries
 #include <esp_log.h>
 
-// Include ESP-MATTER libraries
-#include <esp_matter.h>
-
 // Include project libraries
 #include <pump_task.h>
 

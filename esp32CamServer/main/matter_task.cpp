@@ -11,6 +11,7 @@
 #include <esp_log.h>
 
 #include <matter_task.h>
+#include <security_module_task.h>
 
 static const char *TAG = "matter_task";
 
@@ -106,6 +107,8 @@ esp_err_t app_attribute_update_cb(attribute::callback_type_t type, uint16_t endp
 
     if (type == PRE_UPDATE) {
         /* Driver update */
+        security_module_task_handle_t security_module_task_handle = (security_module_task_handle_t)priv_data;
+        err = security_module_attribute_update(security_module_task_handle, endpoint_id, cluster_id, attribute_id, val);
     }
 
     return err;

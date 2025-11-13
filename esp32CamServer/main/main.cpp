@@ -22,8 +22,10 @@
 #include <esp_matter_ota.h>
 
 // Include project libraries
+#include <cam_task.h>
+#include <http_server_task.h>
 #include <matter_task.h>
-#include <pir_sensor_task.h>
+#include <security_module_task.h>
 
 static const char *TAG = "app_main";
 
@@ -33,17 +35,12 @@ using namespace esp_matter::endpoint;
 using namespace chip::app::Clusters;
 
 // Definitions
-
-#if CONFIG_ENABLE_ENCRYPTED_OTA
-extern const char decryption_key_start[] asm("_binary_esp_image_encryption_key_pem_start");
-extern const char decryption_key_end[] asm("_binary_esp_image_encryption_key_pem_end");
-
-static const char *s_decryption_key = decryption_key_start;
-static const uint16_t s_decryption_key_len = decryption_key_end - decryption_key_start;
-#endif // CONFIG_ENABLE_ENCRYPTED_OTA
+uint16_t intercom_endpoint_id = 0;
+httpd_handle_t cam_server;
 
 // Function declarations
 static void occupancy_sensor_notification(uint16_t endpoint_id, bool occupancy, void *user_data);
+static void doorbell_notification(uint16_t endpoint_id, bool pressed, void *user_data);
 
 extern "C" void app_main()
 {
@@ -63,6 +60,13 @@ extern "C" void app_main()
         return;
     }
 
+    // Initialize GPIO ISR service
+    err = gpio_install_isr_service(0);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "GPIO ISR service install failed: %d", err);
+        return;
+    }
+
     // Create a Matter node and add the mandatory Root Node device type on endpoint 0
     node::config_t node_cfg;
     node_t *node = node::create(&node_cfg, app_attribute_update_cb, app_identification_cb);
@@ -71,7 +75,18 @@ extern "C" void app_main()
         return;
     }
 
-    // add the occupancy sensor
+    // Add on-off plugin unit (for intercom camera)
+    on_off_plug_in_unit::config_t intercom_config;
+    intercom_config.on_off.on_off = false;
+
+    endpoint_t *intercom_ep = on_off_plug_in_unit::create(node, &intercom_config, ENDPOINT_FLAG_NONE, NULL);
+    if (!intercom_ep) {
+        ESP_LOGE(TAG, "Failed to create cam toggle endpoint");
+        return;
+    }
+    intercom_endpoint_id = endpoint::get_id(intercom_ep);
+
+    // Add the occupancy sensor
     occupancy_sensor::config_t occupancy_sensor_config;
     occupancy_sensor_config.occupancy_sensing.occupancy_sensor_type = chip::to_underlying(OccupancySensing::OccupancySensorTypeEnum::kPir);
     occupancy_sensor_config.occupancy_sensing.occupancy_sensor_type_bitmap = chip::to_underlying(OccupancySensing::OccupancySensorTypeBitmap::kPir);
@@ -83,6 +98,43 @@ extern "C" void app_main()
         return;
     }
 
+    // Add generic switch (for doorbell)
+    generic_switch::config_t doorbell_config;
+    doorbell_config.switch_cluster.number_of_positions = 2;
+    doorbell_config.switch_cluster.current_position = 0;
+    doorbell_config.switch_cluster.feature_flags = chip::to_underlying(Switch::Feature::kMomentarySwitch);
+
+    endpoint_t *doorbell_ep = generic_switch::create(node, &doorbell_config, ENDPOINT_FLAG_NONE, NULL);
+    if (!doorbell_ep) {
+        ESP_LOGE(TAG, "Failed to create doorbell endpoint");
+        return;
+    }
+
+    // Initialize camera driver
+    err = cam_task_init();
+
+    // Initialize occupancy sensor driver (pir)
+    static security_module_config_t sec_mod_config = {
+        .pir_sensor =
+            {
+                .cb = occupancy_sensor_notification,
+                .endpoint_id = endpoint::get_id(occupancy_sensor_ep),
+            },
+        .doorbell =
+            {
+                .cb = doorbell_notification,
+                .endpoint_id = endpoint::get_id(doorbell_ep),
+            },
+        .user_data = NULL,
+    };
+
+    // Initialize security module driver
+    err = security_module_task_init(&sec_mod_config);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Security module init failed: %d", err);
+        return;
+    }
+
     // Start Matter stack (this starts transports, commissioning, etc.)
     err = esp_matter::start(app_event_cb);
     if (err != ESP_OK) {
@@ -90,17 +142,8 @@ extern "C" void app_main()
         return;
     }
 
-    // initialize occupancy sensor driver (pir)
-    static pir_sensor_config_t pir_config = {
-        .cb = occupancy_sensor_notification,
-        .endpoint_id = endpoint::get_id(occupancy_sensor_ep),
-    };
-
-    err = pir_sensor_init(&pir_config);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "pir_sensor_init failed: %d", err);
-        return;
-    }
+    // Start HTTP server task
+    http_server_task_start(cam_server);
 }
 
 static void occupancy_sensor_notification(uint16_t endpoint_id, bool occupancy, void *user_data)
@@ -108,12 +151,27 @@ static void occupancy_sensor_notification(uint16_t endpoint_id, bool occupancy, 
     // schedule the attribute update so that we can report it from matter thread
     chip::DeviceLayer::SystemLayer().ScheduleLambda([endpoint_id, occupancy]() {
         attribute_t *attribute =
-            attribute::get(endpoint_id, OccupancySensing::Id, OccupancySensing::Attributes::Occupancy::Id);
+            attribute::get(endpoint_id, Switch::Id, OccupancySensing::Attributes::Occupancy::Id);
 
         esp_matter_attr_val_t val = esp_matter_invalid(NULL);
         attribute::get_val(attribute, &val);
         val.val.b = occupancy;
 
-        attribute::update(endpoint_id, OccupancySensing::Id, OccupancySensing::Attributes::Occupancy::Id, &val);
+        attribute::update(endpoint_id, Switch::Id, OccupancySensing::Attributes::Occupancy::Id, &val);
+    });
+}
+
+static void doorbell_notification(uint16_t endpoint_id, bool pressed, void *user_data)
+{
+    // schedule the attribute update so that we can report it from matter thread
+    chip::DeviceLayer::SystemLayer().ScheduleLambda([endpoint_id, pressed]() {
+        attribute_t *attribute =
+            attribute::get(endpoint_id, Switch::Id, Switch::Attributes::CurrentPosition::Id);
+
+        esp_matter_attr_val_t val = esp_matter_invalid(NULL);
+        attribute::get_val(attribute, &val);
+        val.val.b = pressed;
+
+        attribute::update(endpoint_id, Switch::Id, Switch::Attributes::CurrentPosition::Id, &val);
     });
 }

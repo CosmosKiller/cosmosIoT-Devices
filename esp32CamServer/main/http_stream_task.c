@@ -1,8 +1,8 @@
-#include "esp_camera.h"
-#include "esp_log.h"
-#include "esp_timer.h"
+#include <esp_camera.h>
+#include <esp_log.h>
+#include <esp_timer.h>
 
-#include "http_stream_task.h"
+#include <http_stream_task.h>
 
 #define TAG "http_stream_task"
 
@@ -11,7 +11,21 @@ static const char *_STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" 
 static const char *_STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
 static const char *_STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %zu\r\n\r\n";
 
-esp_err_t stream_handler(httpd_req_t *req)
+// Stream control flag
+static bool stream_enabled = false;
+
+void http_stream_task_service_enabled(bool enable)
+{
+    ESP_LOGI(TAG, "Stream %s", enable ? "enabled" : "disabled");
+    stream_enabled = enable;
+}
+
+bool http_stream_task_service_check(void)
+{
+    return stream_enabled;
+}
+
+esp_err_t http_stream_task_handler(httpd_req_t *pReq)
 {
     camera_fb_t *fb = NULL;
     esp_err_t res = ESP_OK;
@@ -23,12 +37,17 @@ esp_err_t stream_handler(httpd_req_t *req)
         last_frame = esp_timer_get_time();
     }
 
-    res = httpd_resp_set_type(req, _STREAM_CONTENT_TYPE);
+    // Check if streaming is enabled
+    if (!stream_enabled) {
+        return httpd_resp_send_404(pReq);
+    }
+
+    res = httpd_resp_set_type(pReq, _STREAM_CONTENT_TYPE);
     if (res != ESP_OK) {
         return res;
     }
 
-    while (true) {
+    while (stream_enabled) {
         fb = esp_camera_fb_get();
         if (!fb) {
             ESP_LOGE(TAG, "Camera capture failed");
@@ -49,7 +68,7 @@ esp_err_t stream_handler(httpd_req_t *req)
         }
 
         if (res == ESP_OK) {
-            res = httpd_resp_send_chunk(req, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
+            res = httpd_resp_send_chunk(pReq, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
         }
         if (res == ESP_OK) {
             int hlen = snprintf(part_buf, sizeof(part_buf), _STREAM_PART, jpg_buf_len);
@@ -58,11 +77,11 @@ esp_err_t stream_handler(httpd_req_t *req)
                          hlen, sizeof(part_buf));
                 res = ESP_FAIL;
             } else {
-                res = httpd_resp_send_chunk(req, part_buf, (size_t)hlen);
+                res = httpd_resp_send_chunk(pReq, part_buf, (size_t)hlen);
             }
         }
         if (res == ESP_OK) {
-            res = httpd_resp_send_chunk(req, (const char *)jpg_buf, jpg_buf_len);
+            res = httpd_resp_send_chunk(pReq, (const char *)jpg_buf, jpg_buf_len);
         }
         if (fb->format != PIXFORMAT_JPEG) {
             free(jpg_buf);
