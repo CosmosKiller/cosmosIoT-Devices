@@ -23,7 +23,9 @@
 
 // Include project libraries
 #include <cam_task.h>
-#include <http_server_task.h>
+#include <door_intercom_task.h>
+#include <evt_service_task.h>
+#include <http_stream_task.h>
 #include <matter_task.h>
 #include <security_module_task.h>
 
@@ -36,6 +38,7 @@ using namespace chip::app::Clusters;
 
 // Definitions
 uint16_t intercom_endpoint_id = 0;
+uint16_t doorlock_endpoint_id = 0;
 httpd_handle_t cam_server;
 
 // Function declarations
@@ -64,6 +67,20 @@ extern "C" void app_main()
     err = gpio_install_isr_service(0);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "GPIO ISR service install failed: %d", err);
+        return;
+    }
+
+    // Initialize camera driver
+    err = cam_task_init();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "cam_task_init failed: %d", err);
+        return;
+    }
+
+    // Initialize event service
+    err = evt_service_init();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "evt_service_init failed: %d", err);
         return;
     }
 
@@ -98,6 +115,23 @@ extern "C" void app_main()
         return;
     }
 
+    // Set security module callbacks and enpoints
+    static security_module_config_t sec_mod_config = {
+        .pir_sensor =
+            {
+                .cb = occupancy_sensor_notification,
+                .endpoint_id = endpoint::get_id(occupancy_sensor_ep),
+            },
+        .user_data = NULL,
+    };
+
+    // Initialize security module driver
+    err = security_module_task_init(&sec_mod_config);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "security_module_init failed: %d", err);
+        return;
+    }
+
     // Add generic switch (for doorbell)
     generic_switch::config_t doorbell_config;
     doorbell_config.switch_cluster.number_of_positions = 2;
@@ -110,16 +144,8 @@ extern "C" void app_main()
         return;
     }
 
-    // Initialize camera driver
-    err = cam_task_init();
-
-    // Initialize occupancy sensor driver (pir)
-    static security_module_config_t sec_mod_config = {
-        .pir_sensor =
-            {
-                .cb = occupancy_sensor_notification,
-                .endpoint_id = endpoint::get_id(occupancy_sensor_ep),
-            },
+    // Set door intercom callbacks and enpoints
+    static door_intercom_config_t door_intercom_config = {
         .doorbell =
             {
                 .cb = doorbell_notification,
@@ -129,9 +155,9 @@ extern "C" void app_main()
     };
 
     // Initialize security module driver
-    err = security_module_task_init(&sec_mod_config);
+    err = door_intercom_task_init(&door_intercom_config);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Security module init failed: %d", err);
+        ESP_LOGE(TAG, "door_intercom_init failed: %d", err);
         return;
     }
 

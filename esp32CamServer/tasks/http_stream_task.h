@@ -9,14 +9,6 @@ extern "C" {
 #include <esp_http_server.h>
 
 /**
- * @brief HTTP stream task handler
- *
- * @param pReq Pointer to HTTP request structure
- * @return esp_err_t
- */
-esp_err_t http_stream_task_handler(httpd_req_t *pReq);
-
-/**
  * @brief Enable/disable streaming without stopping server
  *
  * @param enable true to enable stream, false to disable
@@ -29,6 +21,14 @@ void http_stream_task_service_enabled(bool enable);
  * @return true if streaming enabled, false otherwise
  */
 bool http_stream_task_service_check(void);
+
+/**
+ * @brief Set up and start HTTP server
+ *
+ * @param server Existing server handle or NULL
+ * @return httpd_handle_t New server handle
+ */
+httpd_handle_t http_server_task_start(httpd_handle_t server);
 
 #ifdef __cplusplus
 }
