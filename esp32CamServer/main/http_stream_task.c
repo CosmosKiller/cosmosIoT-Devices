@@ -6,7 +6,7 @@
 
 #define TAG "http_stream_task"
 
-#define PART_BOUNDARY "123456789000000000000987654321"
+#define PART_BOUNDARY "frame"
 static const char *_STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
 static const char *_STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
 static const char *_STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %zu\r\n\r\n";
@@ -32,6 +32,8 @@ static esp_err_t http_stream_task_handler(httpd_req_t *pReq)
     }
 
     res = httpd_resp_set_type(pReq, _STREAM_CONTENT_TYPE);
+    httpd_resp_set_hdr(pReq, "Cache-Control", "no-store");
+    httpd_resp_set_hdr(pReq, "Pragma", "no-cache");
     if (res != ESP_OK) {
         return res;
     }
@@ -83,9 +85,9 @@ static esp_err_t http_stream_task_handler(httpd_req_t *pReq)
         int64_t frame_time = fr_end - last_frame;
         last_frame = fr_end;
         frame_time /= 1000;
-        float fps = frame_time > 0 ? 1000.0f / (float)frame_time : 0.0f;
-        ESP_LOGI(TAG, "MJPG: %luKB %lums (%.1ffps)", (uint32_t)(jpg_buf_len / 1024), (uint32_t)frame_time, fps);
     }
+
+    httpd_resp_send_chunk(pReq, "\r\n--" PART_BOUNDARY "--\r\n", strlen("\r\n--" PART_BOUNDARY "--\r\n"));
 
     last_frame = 0;
     return res;
@@ -94,6 +96,9 @@ static esp_err_t http_stream_task_handler(httpd_req_t *pReq)
 httpd_handle_t http_server_task_start(httpd_handle_t server)
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.stack_size = 8192;
+    config.core_id = 1;
+    config.task_priority = 5;
 
     if (httpd_start(&server, &config) == ESP_OK) {
         httpd_uri_t stream_uri = {

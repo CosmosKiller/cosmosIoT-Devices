@@ -40,6 +40,16 @@ static void evt_service_task_handler(void *pArg)
                 }
                 break;
 
+            case EVT_SOURCE_CONTACT:
+                if (evt.type == EVT_TYPE_TRIGGERED) {
+                    ESP_LOGI(TAG, "Door/window opened!");
+                    // TO-DO Door opened logic
+                } else if (evt.type == EVT_TYPE_CLEARED) {
+                    ESP_LOGI(TAG, "Door/window closed.");
+                    // TO-DO Door closed logic
+                }
+                break;
+
             case EVT_SOURCE_DOORBELL:
                 if (evt.type == EVT_TYPE_TRIGGERED) {
                     ESP_LOGI(TAG, "Doorbell pressed! Call requested.");
@@ -48,13 +58,15 @@ static void evt_service_task_handler(void *pArg)
                 }
                 break;
 
-            case EVT_SOURCE_CONTACT:
+            case EVT_SOURCE_INTERCOM:
                 if (evt.type == EVT_TYPE_TRIGGERED) {
-                    ESP_LOGI(TAG, "Door/window opened!");
-                    // TO-DO Door opened logic
+                    ESP_LOGI(TAG, "Call started.");
+                    gpio_set_level(LED_PIN, 1);
+                    http_stream_task_service_enabled(true);
                 } else if (evt.type == EVT_TYPE_CLEARED) {
-                    ESP_LOGI(TAG, "Door/window closed.");
-                    // TO-DO Door closed logic
+                    ESP_LOGI(TAG, "Call ended.");
+                    gpio_set_level(LED_PIN, 0);
+                    http_stream_task_service_enabled(false);
                 }
                 break;
 

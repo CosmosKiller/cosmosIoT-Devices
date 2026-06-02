@@ -133,12 +133,9 @@ extern "C" void app_main()
     }
 
     // Add generic switch (for doorbell)
-    generic_switch::config_t doorbell_config;
-    doorbell_config.switch_cluster.number_of_positions = 2;
-    doorbell_config.switch_cluster.current_position = 0;
-    doorbell_config.switch_cluster.feature_flags = chip::to_underlying(Switch::Feature::kMomentarySwitch);
+    on_off_light_switch::config_t doorbell_config;
 
-    endpoint_t *doorbell_ep = generic_switch::create(node, &doorbell_config, ENDPOINT_FLAG_NONE, NULL);
+    endpoint_t *doorbell_ep = on_off_light_switch::create(node, &doorbell_config, ENDPOINT_FLAG_NONE, NULL);
     if (!doorbell_ep) {
         ESP_LOGE(TAG, "Failed to create doorbell endpoint");
         return;
@@ -177,13 +174,13 @@ static void occupancy_sensor_notification(uint16_t endpoint_id, bool occupancy, 
     // schedule the attribute update so that we can report it from matter thread
     chip::DeviceLayer::SystemLayer().ScheduleLambda([endpoint_id, occupancy]() {
         attribute_t *attribute =
-            attribute::get(endpoint_id, Switch::Id, OccupancySensing::Attributes::Occupancy::Id);
+            attribute::get(endpoint_id, OccupancySensing::Id, OccupancySensing::Attributes::Occupancy::Id);
 
         esp_matter_attr_val_t val = esp_matter_invalid(NULL);
         attribute::get_val(attribute, &val);
         val.val.b = occupancy;
 
-        attribute::update(endpoint_id, Switch::Id, OccupancySensing::Attributes::Occupancy::Id, &val);
+        attribute::update(endpoint_id, OccupancySensing::Id, OccupancySensing::Attributes::Occupancy::Id, &val);
     });
 }
 
@@ -192,12 +189,12 @@ static void doorbell_notification(uint16_t endpoint_id, bool pressed, void *user
     // schedule the attribute update so that we can report it from matter thread
     chip::DeviceLayer::SystemLayer().ScheduleLambda([endpoint_id, pressed]() {
         attribute_t *attribute =
-            attribute::get(endpoint_id, Switch::Id, Switch::Attributes::CurrentPosition::Id);
+            attribute::get(endpoint_id, OnOff::Id, OnOff::Attributes::OnOff::Id);
 
         esp_matter_attr_val_t val = esp_matter_invalid(NULL);
         attribute::get_val(attribute, &val);
         val.val.b = pressed;
 
-        attribute::update(endpoint_id, Switch::Id, Switch::Attributes::CurrentPosition::Id, &val);
+        attribute::update(endpoint_id, OnOff::Id, OnOff::Attributes::OnOff::Id, &val);
     });
 }

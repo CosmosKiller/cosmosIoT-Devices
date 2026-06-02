@@ -21,9 +21,9 @@ extern "C" {
 typedef enum {
     EVT_SOURCE_PIR,
     EVT_SOURCE_CONTACT,
-    EVT_SOURCE_PANIC,
     EVT_SOURCE_DOORBELL,
     EVT_SOURCE_INTERCOM,
+    EVT_SOURCE_PANIC,
     EVT_SOURCE_MAX,
 } evt_source_t;
 
